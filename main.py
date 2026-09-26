@@ -633,33 +633,34 @@ def get_by_suffix(
     matching_surnames = [dict(r) for r in cur.fetchall()]
     top_surnames = matching_surnames[:25]
 
-    # Find settlements with these surnames
+    # Fast distinct settlements count per district
     cur.execute(f"""
-        SELECT DISTINCT st.id, st.name_be, st.name_ru, st.settlement_type, st.district, st.selsoviet,
-                        st.powiat_18, st.estate_18, st.owner_18, st.estate_19, st.owner_19,
-                        st.uezd, st.volost, st.parish_orthodox, st.parish_catholic, st.lat, st.lon, sn.surname_be
+        SELECT st.district, COUNT(DISTINCT st.id) as cnt
         FROM settlements st
         JOIN settlement_surnames ss ON st.id = ss.settlement_id
         JOIN surnames sn ON ss.surname_id = sn.id
-        WHERE {" OR ".join(conds)}
+        WHERE ({" OR ".join(conds)}) AND st.district != ''
+        GROUP BY st.district
     """, pats)
+    st_by_dist = dict(cur.fetchall())
+    total_unique_settlements = sum(st_by_dist.values())
 
-    st_rows = [dict(r) for r in cur.fetchall()]
+    # Fast sample points for map display (capped at 1500 to keep UI responsive)
+    cur.execute(f"""
+        SELECT DISTINCT st.id, st.slug, st.name_be, st.name_ru, st.settlement_type, st.district, st.lat, st.lon, sn.surname_be
+        FROM settlements st
+        JOIN settlement_surnames ss ON st.id = ss.settlement_id
+        JOIN surnames sn ON ss.surname_id = sn.id
+        WHERE ({" OR ".join(conds)}) AND st.lat IS NOT NULL
+        LIMIT 1500
+    """, pats)
+    sample_points = [dict(r) for r in cur.fetchall()]
     conn.close()
 
     totals = get_district_totals()
-    st_by_dist = {}
-    for st in st_rows:
-        d = st.get("district")
-        if d:
-            if d not in st_by_dist:
-                st_by_dist[d] = set()
-            st_by_dist[d].add(st["id"])
-
     density_list = []
-    for dist, st_id_set in st_by_dist.items():
+    for dist, u_count in st_by_dist.items():
         tot = totals.get(dist, 0)
-        u_count = len(st_id_set)
         pct = min(100.0, round((u_count / tot) * 100, 1)) if tot > 0 else 0.0
         cls = classify_density(pct)
         density_list.append({
@@ -678,11 +679,11 @@ def get_by_suffix(
     return {
         "suffix": suffix,
         "surnames_count": len(matching_surnames),
-        "settlements_count": len(st_rows),
-        "unique_settlements": len(set(s["id"] for s in st_rows)),
+        "settlements_count": total_unique_settlements,
+        "unique_settlements": total_unique_settlements,
         "top_surnames": top_surnames,
         "districts_density": density_list[:20],
-        "points": st_rows
+        "points": sample_points
     }
 
 @app.get("/api/analysis/suffix-competition")
@@ -721,44 +722,41 @@ def compare_suffix_competition(
         conds = ["sn.surname_be LIKE ?" for _ in parts]
         pats = [f"%{p}" for p in parts]
 
-        # Fetch all matching settlements
+        # Fast distinct settlements count per district
+        cur.execute(f"""
+            SELECT st.district, COUNT(DISTINCT st.id) as cnt
+            FROM settlements st
+            JOIN settlement_surnames ss ON st.id = ss.settlement_id
+            JOIN surnames sn ON ss.surname_id = sn.id
+            WHERE ({" OR ".join(conds)}) AND st.district != ''
+            GROUP BY st.district
+        """, pats)
+        dist_counts = dict(cur.fetchall())
+        group_district_settlements.append(dist_counts)
+
+        # Fast sample points for hex binning and map dots (up to 1000 per group)
         cur.execute(f"""
             SELECT DISTINCT st.id, st.slug, st.name_be, st.name_ru, st.settlement_type, st.district, st.lat, st.lon, sn.surname_be
             FROM settlements st
             JOIN settlement_surnames ss ON st.id = ss.settlement_id
             JOIN surnames sn ON ss.surname_id = sn.id
-            WHERE ({" OR ".join(conds)}) AND st.district != ''
+            WHERE ({" OR ".join(conds)}) AND st.lat IS NOT NULL
+            LIMIT 1000
         """, pats)
-        st_rows = [dict(r) for r in cur.fetchall()]
-
-        # Distinct settlements per district
-        st_by_dist = {}
-        seen_points_in_group = set()
-        for st in st_rows:
-            st["color"] = color_info["hex"]
-            st["group_idx"] = idx
-            st["group_label"] = raw_grp
-            st["surname"] = st["surname_be"]
-            if st["id"] not in seen_points_in_group:
-                seen_points_in_group.add(st["id"])
-                all_points.append(st)
-            
-            d = st.get("district")
-            if d:
-                if d not in st_by_dist:
-                    st_by_dist[d] = set()
-                st_by_dist[d].add(st["id"])
-
-        dist_counts = {d: len(s_ids) for d, s_ids in st_by_dist.items()}
-        group_district_settlements.append(dist_counts)
+        for r in cur.fetchall():
+            pt = dict(r)
+            pt["color"] = color_info["hex"]
+            pt["group_idx"] = idx
+            pt["group_label"] = raw_grp
+            pt["surname"] = pt["surname_be"]
+            all_points.append(pt)
 
         groups.append({
             "group_idx": idx,
             "label": raw_grp,
             "color": color_info["hex"],
             "color_name": color_info["name"],
-            "total_settlements": len(set(st["id"] for st in st_rows)),
-            "total_mentions": len(st_rows)
+            "total_settlements": sum(dist_counts.values())
         })
 
     conn.close()

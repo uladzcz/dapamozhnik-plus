@@ -1579,9 +1579,24 @@
     });
 
     document.getElementById('btnRunCustomSuffix').onclick = () => {
-      const val = document.getElementById('inputCustomSuffix').value.trim();
-      if (val) loadSuffixAnalysis(val);
+      let val = document.getElementById('inputCustomSuffix').value.trim();
+      if (!val) {
+        const activeBtn = document.querySelector('.suffix-btn.bg-emerald-800');
+        if (activeBtn && activeBtn.dataset.suffix) {
+          val = activeBtn.dataset.suffix;
+        } else {
+          val = 'віч,іч';
+          document.getElementById('inputCustomSuffix').value = val;
+        }
+      }
+      loadSuffixAnalysis(val);
     };
+
+    document.getElementById('inputCustomSuffix').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        document.getElementById('btnRunCustomSuffix').click();
+      }
+    });
 
     // Toggle expandable suffixes in Single mode
     const btnToggleMoreSuffixes = document.getElementById('btnToggleMoreSuffixes');
@@ -1605,11 +1620,19 @@
     }
 
     async function loadSuffixAnalysis(suffix) {
+      const btn = document.getElementById('btnRunCustomSuffix');
+      const origHtml = btn.innerHTML;
       try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> Аналіз...';
+
         dominanceLayer.clearLayers();
         if (map.hasLayer(dominanceLayer)) map.removeLayer(dominanceLayer);
 
+        document.getElementById('suffixDistrictsList').innerHTML = '<div class="p-4 text-center text-slate-500 text-xs flex items-center justify-center gap-2"><i class="ph ph-spinner animate-spin text-emerald-700 text-sm"></i> Загрузка статыстыкі фіналі...</div>';
+
         const res = await fetch(`/api/analysis/suffix?suffix=${encodeURIComponent(suffix)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
         document.getElementById('suffixStatSurnames').innerText = data.surnames_count.toLocaleString();
@@ -1655,6 +1678,10 @@
 
       } catch (err) {
         console.error("Suffix analysis error:", err);
+        alert("Не ўдалося загрузіць аналіз фіналі: " + (err.message || err));
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
       }
     }
 
@@ -1737,14 +1764,32 @@
         return;
       }
 
+      const btn = document.getElementById('btnRunCompetition');
+      const origHtml = btn.innerHTML;
       try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph ph-spinner animate-spin"></i> <span>Разлік спаборніцтва...</span>';
+
+        const emptyState = document.getElementById('compEmptyState');
+        const resultsSection = document.getElementById('compResultsSection');
+        emptyState.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-10 gap-2.5 text-emerald-800">
+            <i class="ph ph-spinner animate-spin text-3xl text-emerald-700"></i>
+            <span class="font-bold text-xs">Ідзе разлік дамінавання па 118 раёнах Беларусі...</span>
+            <span class="text-[10px] text-slate-500">Разлічваюцца перамогі, маржа і нічые 50/50</span>
+          </div>
+        `;
+        emptyState.classList.remove('hidden');
+        resultsSection.classList.add('hidden');
+
         const threshold = document.getElementById('selCompMargin').value || "0.10";
         const querySuffixes = compActiveGroups.join(';');
         const res = await fetch(`/api/analysis/suffix-competition?suffixes=${encodeURIComponent(querySuffixes)}&margin_threshold=${threshold}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
-        document.getElementById('compEmptyState').classList.add('hidden');
-        document.getElementById('compResultsSection').classList.remove('hidden');
+        emptyState.classList.add('hidden');
+        resultsSection.classList.remove('hidden');
 
         // 1. Render Summary Leaderboard
         const leaderboardContainer = document.getElementById('compLeaderboard');
@@ -1841,6 +1886,15 @@
 
       } catch (err) {
         console.error("Competition error:", err);
+        alert("Памылка пры разліку спаборніцтва: " + (err.message || err));
+        document.getElementById('compEmptyState').innerHTML = `
+          <div class="text-center text-red-600 py-6 text-xs">
+            Не ўдалося завяршыць разлік. Калі ласка, націсніце кнопку яшчэ раз.
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
       }
     };
 
