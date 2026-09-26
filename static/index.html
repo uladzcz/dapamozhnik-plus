@@ -167,6 +167,23 @@
 
           <!-- Search Results View -->
           <div id="resultsView" class="hidden space-y-4">
+            <!-- Loading Indicator -->
+            <div id="searchLoading" class="hidden py-8 text-center text-emerald-800 space-y-2">
+              <i class="ph ph-spinner animate-spin text-2xl text-emerald-700"></i>
+              <div class="text-xs font-semibold">Пошук у базе...</div>
+            </div>
+
+            <!-- Empty State for Search -->
+            <div id="searchEmptyState" class="hidden py-8 text-center text-slate-500 space-y-2">
+              <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+                <i class="ph ph-magnifying-glass text-xl"></i>
+              </div>
+              <div class="text-sm font-bold text-slate-700">Нічога не знойдзена</div>
+              <p class="text-xs text-slate-400 max-w-xs mx-auto">
+                Паспрабуйце ўключыць «Шукаць па ўсіх параметрах» альбо выкарыстаць маску з зорачкай (<code class="bg-slate-100 px-1 py-0.5 rounded text-emerald-800 font-semibold">*віч</code>).
+              </p>
+            </div>
+
             <!-- Surnames Section -->
             <div id="surnamesSection" class="hidden">
               <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
@@ -399,7 +416,7 @@
               <i class="ph ph-magnifying-glass"></i> Адзіночны
             </button>
             <button id="btnSuffixModeComp" class="flex-1 py-1 px-2 rounded-md text-slate-600 hover:text-slate-800 transition flex items-center justify-center gap-1">
-              <i class="ph ph-sword"></i> ⚔️ Спаборніцтва
+              <i class="ph ph-sword"></i> Спаборніцтва
             </button>
           </div>
         </div>
@@ -547,11 +564,11 @@
 
             <!-- Vis Mode Selector (Hexagon Tiles vs District Circles) -->
             <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
-              <button id="btnCompModeHex" type="button" class="flex-1 py-1 px-2 rounded-md bg-white text-emerald-800 shadow-sm transition flex items-center justify-center gap-1">
-                <i class="ph ph-polygon"></i> ⬡ Плітка (Гексагоны)
+              <button id="btnCompModeHex" type="button" class="flex-1 py-1 px-2 rounded-md bg-white text-emerald-800 shadow-sm transition flex items-center justify-center gap-1.5">
+                <span class="text-sm font-normal">⬡</span> <span>Плітка (Гексагоны)</span>
               </button>
-              <button id="btnCompModeCircles" type="button" class="flex-1 py-1 px-2 rounded-md text-slate-600 hover:text-slate-800 transition flex items-center justify-center gap-1">
-                <i class="ph ph-circle"></i> ⭕ Раённыя кругі
+              <button id="btnCompModeCircles" type="button" class="flex-1 py-1 px-2 rounded-md text-slate-600 hover:text-slate-800 transition flex items-center justify-center gap-1.5">
+                <span class="text-sm font-normal">○</span> <span>Раённыя кругі</span>
               </button>
             </div>
 
@@ -773,13 +790,13 @@
     osmLayer.addTo(map);
 
     const baseMaps = {
-      "🗺️ OpenStreetMap (Светлая)": osmLayer,
-      "⚪ CartoDB Светлая (для аналітыкі)": cartoLightLayer,
-      "📜 3-верстка (Шуберт XIX ст.)": schubert3vLayer,
-      "🎖️ 1-верстка (пач. XX ст.)": oneVerstLayer,
-      "⚔️ РККА 500м (1930–40-я)": rkkaLayer,
-      "🇵🇱 WIG 1 км (Польская 1930-я)": wigLayer,
-      "📖 10-верстка (Стральбіцкі)": tenVerstLayer
+      "OpenStreetMap (Светлая)": osmLayer,
+      "CartoDB Светлая (для аналітыкі)": cartoLightLayer,
+      "3-верстка (Шуберт XIX ст.)": schubert3vLayer,
+      "1-верстка (пач. XX ст.)": oneVerstLayer,
+      "РККА 500м (1930–40-я)": rkkaLayer,
+      "WIG 1 км (Польская 1930-я)": wigLayer,
+      "10-верстка (Стральбіцкі)": tenVerstLayer
     };
 
     L.control.layers(baseMaps, null, { position: 'topright', collapsed: true }).addTo(map);
@@ -1096,6 +1113,16 @@
       }, 250);
     });
 
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        clearTimeout(searchDebounce);
+        const val = searchInput.value.trim();
+        if (val) {
+          performSearch(val);
+        }
+      }
+    });
+
     clearSearch.addEventListener('click', () => {
       searchInput.value = '';
       clearSearch.classList.add('hidden');
@@ -1128,13 +1155,29 @@
     // Main Search Action
     async function performSearch(query) {
       if (!query) return;
+      const searchLoading = document.getElementById('searchLoading');
+      const searchEmptyState = document.getElementById('searchEmptyState');
+      const settlementsSection = document.getElementById('settlementsSection');
+      const surnamesSection = document.getElementById('surnamesSection');
+
+      showResults();
+      if (searchLoading) searchLoading.classList.remove('hidden');
+      if (searchEmptyState) searchEmptyState.classList.add('hidden');
+      if (settlementsSection) settlementsSection.classList.add('hidden');
+      if (surnamesSection) surnamesSection.classList.add('hidden');
+
       try {
         const allFieldsParam = chkAllFields.checked ? 'true' : 'false';
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&type=${currentFilter}&all_fields=${allFieldsParam}&limit=500`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         renderResults(data, `Населеныя пункты (${data.settlements ? data.settlements.length : 0})`);
       } catch (err) {
         console.error("Search error:", err);
+        if (searchEmptyState) searchEmptyState.classList.add('hidden');
+        showToast("Не ўдалося атрымаць вынікі. Праверце сервер.");
+      } finally {
+        if (searchLoading) searchLoading.classList.add('hidden');
       }
     }
 
@@ -1146,6 +1189,7 @@
       const surnamesList = document.getElementById('surnamesList');
       const settlementsSection = document.getElementById('settlementsSection');
       const surnamesSection = document.getElementById('surnamesSection');
+      const searchEmptyState = document.getElementById('searchEmptyState');
       document.getElementById('settlementsSectionTitle').innerText = sectionTitle;
 
       settlementsList.innerHTML = '';
@@ -1153,6 +1197,14 @@
 
       const settlements = data.settlements || [];
       const surnames = data.surnames || [];
+
+      if (settlements.length === 0 && surnames.length === 0) {
+        if (searchEmptyState) searchEmptyState.classList.remove('hidden');
+        if (surnamesSection) surnamesSection.classList.add('hidden');
+        if (settlementsSection) settlementsSection.classList.add('hidden');
+        return;
+      }
+      if (searchEmptyState) searchEmptyState.classList.add('hidden');
 
       if (surnames.length > 0 && (currentFilter === 'all' || currentFilter === 'surnames')) {
         surnamesSection.classList.remove('hidden');
@@ -1855,8 +1907,8 @@
           card.style.background = 'repeating-linear-gradient(45deg, rgba(239,68,68,0.08), rgba(239,68,68,0.08) 6px, rgba(59,130,246,0.08) 6px, rgba(59,130,246,0.08) 12px)';
           card.innerHTML = `
             <div class="text-xl font-black text-slate-700">${data.summary.ties}</div>
-            <div class="text-[11px] font-bold text-slate-800 flex items-center gap-1">
-              <span>⚔️</span>
+            <div class="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+              <i class="ph ph-scales text-slate-600"></i>
               <span>Нічыя 50/50</span>
             </div>
             <div class="text-[9px] text-slate-500">${tiePct}% раёнаў (паласатыя)</div>
