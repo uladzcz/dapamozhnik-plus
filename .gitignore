@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+!*.db.zip
+.env
+.DS_Store
+.idea/
+.vscode/
+venv/
+env/
+test_*.py
+check_*.py
+inspect_*.py
+scratch_*.py
+comp_out.json

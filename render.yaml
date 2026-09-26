@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: dapamozhnik-plus
+    runtime: python
+    buildCommand: "pip install -r requirements.txt && python -c 'import db; db.ensure_db()'"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+    plan: free

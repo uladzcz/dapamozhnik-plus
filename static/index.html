@@ -1,0 +1,2487 @@
+<!DOCTYPE html>
+<html lang="be">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Дапаможнік+ | Гістарычныя паселішчы і прозвішчы Беларусі</title>
+  
+  <meta property="og:title" content="Дапаможнік+ | Гістарычныя паселішчы і прозвішчы Беларусі">
+  <meta property="og:description" content="Адкрытая пошукавая сістэма па архіўных даных і карце Беларусі з інтэрактыўнымі прыходамі, маёнткамі і аналізам арэалаў.">
+  <meta property="og:type" content="website">
+
+  <!-- TailwindCSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet & MarkerCluster -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+  <!-- Leaflet Heatmap -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <style>
+    #map { height: 100%; width: 100%; z-index: 10; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .leaflet-control-layers {
+      border-radius: 0.75rem !important;
+      border: 1px solid #cbd5e1 !important;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+      background: rgba(255, 255, 255, 0.95) !important;
+      backdrop-filter: blur(8px) !important;
+      font-family: inherit !important;
+      font-size: 11px !important;
+      padding: 6px 10px !important;
+    }
+    .leaflet-control-layers-base label {
+      display: flex !important;
+      align-items: center !important;
+      gap: 6px !important;
+      padding: 3px 0 !important;
+      cursor: pointer !important;
+    }
+    .leaflet-control-layers-base label:hover {
+      color: #065f46 !important;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
+
+  <!-- Header -->
+  <header class="bg-emerald-800 text-white px-5 py-3 shadow-md flex items-center justify-between z-30 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="bg-emerald-700 p-2 rounded-lg text-emerald-200 shadow-inner">
+        <i class="ph ph-compass text-2xl"></i>
+      </div>
+      <div>
+        <h1 class="font-bold text-lg leading-tight flex items-center gap-2">
+          Дапаможнік<span class="bg-amber-400 text-slate-900 text-xs px-1.5 py-0.5 rounded font-bold uppercase tracking-wide shadow-sm">+</span>
+        </h1>
+        <p class="text-xs text-emerald-200">Гістарычныя паселішчы, маёнткі, прыходы і прозвішчы Беларусі</p>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="btnOpenCompareModal" class="flex items-center gap-1.5 text-xs bg-emerald-700 hover:bg-emerald-600 px-3 py-1.5 rounded-md font-medium transition shadow-sm">
+        <i class="ph ph-upload-simple text-base"></i>
+        <span>Імпарт CSV базы</span>
+      </button>
+      <a href="https://be.wikipedia.org" target="_blank" class="hidden sm:flex items-center gap-1 text-xs text-emerald-200 hover:text-white px-2 py-1 transition">
+        <i class="ph ph-arrow-square-out text-sm"></i>
+        <span>Вікіпедыя</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- Left Sidebar -->
+    <aside id="sidebar" class="w-full md:w-[460px] bg-white border-r border-slate-200 flex flex-col z-20 shadow-lg shrink-0 transition-transform duration-300">
+      
+      <!-- Top Navigation Tabs -->
+      <div class="flex items-center border-b border-slate-200 bg-white px-3 pt-2 gap-1 text-xs font-semibold shrink-0">
+        <button id="tabNavSearch" class="tab-nav-btn active flex items-center gap-1.5 px-3 py-2 border-b-2 border-emerald-700 text-emerald-800 transition">
+          <i class="ph ph-magnifying-glass text-sm"></i> Пошук
+        </button>
+        <button id="tabNavCompare" class="tab-nav-btn flex items-center gap-1.5 px-3 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition">
+          <i class="ph ph-git-merge text-sm"></i> Параўнанне
+        </button>
+        <button id="tabNavSuffix" class="tab-nav-btn flex items-center gap-1.5 px-3 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition">
+          <i class="ph ph-tree-structure text-sm"></i> Фіналі
+        </button>
+        <button id="tabNavDensity" class="tab-nav-btn flex items-center gap-1.5 px-3 py-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition">
+          <i class="ph ph-chart-bar text-sm"></i> Шчыльнасць
+        </button>
+      </div>
+
+      <!-- TAB 1: Search View Container -->
+      <div id="panelSearch" class="flex-1 flex flex-col overflow-hidden">
+        
+        <!-- Search Input Area -->
+        <div class="p-4 border-b border-slate-200 bg-slate-50 shrink-0 space-y-2.5">
+          <div class="relative">
+            <input 
+              type="text" 
+              id="searchInput" 
+              placeholder="Увядзіце вёску, прозвішча, прыход ці маёнтак..." 
+              class="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-sm"
+            />
+            <i class="ph ph-magnifying-glass absolute left-3 top-3 text-slate-400 text-lg"></i>
+            <button id="clearSearch" class="hidden absolute right-3 top-3 text-slate-400 hover:text-slate-600">
+              <i class="ph ph-x-circle text-lg"></i>
+            </button>
+          </div>
+
+          <!-- Filter Pills & All Fields Checkbox -->
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center gap-1.5">
+              <button data-type="all" class="filter-btn active bg-emerald-800 text-white px-3 py-1 rounded-full font-medium transition">Усе</button>
+              <button data-type="settlements" class="filter-btn bg-white border border-slate-300 text-slate-600 px-3 py-1 rounded-full hover:bg-slate-100 transition">Паселішчы</button>
+              <button data-type="surnames" class="filter-btn bg-white border border-slate-300 text-slate-600 px-3 py-1 rounded-full hover:bg-slate-100 transition">Прозвішчы</button>
+            </div>
+          </div>
+
+          <!-- All Fields Toggle Requested by User -->
+          <div class="pt-2 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" id="chkAllFields" class="rounded text-emerald-700 focus:ring-emerald-500 w-3.5 h-3.5">
+              <span class="text-[11px] font-medium text-slate-700">Шукаць па ўсіх параметрах <span class="text-slate-400 font-normal">(раён, воласць, маёнтак, прыход)</span></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Views Container -->
+        <div id="searchSidebarContent" class="flex-1 overflow-y-auto custom-scrollbar p-4">
+          
+          <!-- Welcome View -->
+          <div id="welcomeView" class="py-6 text-center text-slate-500 space-y-3">
+            <div class="inline-flex p-3 bg-emerald-50 text-emerald-700 rounded-full">
+              <i class="ph ph-map-trifold text-3xl"></i>
+            </div>
+            <h3 class="font-semibold text-slate-700">Гістарычны пошук</h3>
+            <p class="text-xs text-slate-500 max-w-xs mx-auto">
+              Паспрабуйце знайсці: горад/вёску (<em>Мінск, Тартак, Сасноўка</em>), прозвішча (<em>Каралёў, Літвін, Казлоўскі</em>) ці прыход (<em>Фалковичский</em>).
+            </p>
+            <div class="p-3 bg-emerald-50/70 border border-emerald-200 rounded-lg text-left text-xs text-emerald-950 mt-4 space-y-1.5">
+              <div class="font-semibold flex items-center gap-1 text-emerald-800">
+                <i class="ph ph-sparkle text-sm"></i> Магчымасці платформы Дапаможнік+:
+              </div>
+              <div>• <strong>Пошук па назве па змаўчанні:</strong> запыт «Мінск» знаходзіць горад Мінск без сотняў вёсак Мінскага раёна.</div>
+              <div>• <strong>Прабіты ліміт 120:</strong> поўная база для ўсіх прозвішчаў (Каралёў — 236 вёсак, Іваноў — 825).</div>
+              <div>• <strong>Пераключальнік мапы:</strong> кластары, кропкі або цяплавая карта (Heatmap).</div>
+            </div>
+          </div>
+
+          <!-- Search Results View -->
+          <div id="resultsView" class="hidden space-y-4">
+            <!-- Surnames Section -->
+            <div id="surnamesSection" class="hidden">
+              <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
+                <span>Прозвішчы</span>
+                <span id="surnamesCount" class="text-emerald-700 font-semibold"></span>
+              </div>
+              <div id="surnamesList" class="space-y-1.5"></div>
+            </div>
+
+            <!-- Settlements Section -->
+            <div id="settlementsSection" class="hidden">
+              <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
+                <span id="settlementsSectionTitle">Населеныя пункты</span>
+                <span id="settlementsCount" class="text-emerald-700 font-semibold"></span>
+              </div>
+              <div id="settlementsList" class="space-y-2"></div>
+            </div>
+          </div>
+
+          <!-- Settlement Detail Card -->
+          <div id="settlementDetailView" class="hidden space-y-4">
+            <button id="btnBackFromSettlement" class="text-xs text-emerald-700 hover:text-emerald-900 flex items-center gap-1 font-semibold mb-2">
+              <i class="ph ph-arrow-left"></i> Назад да вынікаў
+            </button>
+            
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+              <div>
+                <span id="cardType" class="text-[11px] font-semibold uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded"></span>
+                <h2 id="cardTitle" class="text-xl font-bold text-slate-800 mt-1"></h2>
+                <div id="cardSubtitle" class="text-xs text-slate-500"></div>
+              </div>
+
+              <!-- Full Historical Attributes -->
+              <div class="space-y-1 text-xs text-slate-700 border-t border-slate-200 pt-3">
+                <div class="flex justify-between py-1 border-b border-slate-100">
+                  <span class="text-slate-500">Раён:</span>
+                  <span id="cardDistrict" class="font-medium text-right"></span>
+                </div>
+                <div id="rowSelsoviet" class="flex justify-between py-1 border-b border-slate-100">
+                  <span class="text-slate-500">Сельсавет:</span>
+                  <span id="cardSelsoviet" class="font-medium text-right"></span>
+                </div>
+                <div id="rowPowiat18" class="flex justify-between py-1 border-b border-slate-100">
+                  <span class="text-slate-500">Павет (XVIII ст.):</span>
+                  <span id="cardPowiat18" class="font-medium text-right"></span>
+                </div>
+                <div id="rowEstate18" class="flex items-center justify-between py-1 border-b border-slate-100">
+                  <span class="text-slate-500">Маёнтак (XVIII ст.):</span>
+                  <span id="cardEstate18"></span>
+                </div>
+                <div id="rowOwner18" class="flex justify-between py-1 border-b border-slate-100">
+                  <span class="text-slate-500">Уласнік (XVIII ст.):</span>
+                  <span id="cardOwner18" class="font-medium text-right text-slate-800"></span>
+                </div>
+                <div id="rowEstate19" class="flex items-center justify-between py-1 border-b border-slate-100">
+                  <span class="text-slate-500">Имение (до 1863 г.):</span>
+                  <span id="cardEstate19"></span>
+                </div>
+                <div id="rowOwner19" class="flex justify-between py-1 border-b border-slate-100">
+                  <span class="text-slate-500">Владелец (XIX в.):</span>
+                  <span id="cardOwner19" class="font-medium text-right text-slate-800"></span>
+                </div>
+                <div id="rowUezd" class="flex justify-between py-1 border-b border-slate-100">
+                  <span class="text-slate-500">Уезд:</span>
+                  <span id="cardUezd" class="font-medium text-right"></span>
+                </div>
+                <div id="rowVolost" class="flex items-center justify-between py-1 border-b border-slate-100">
+                  <span class="text-slate-500">Волость:</span>
+                  <span id="cardVolost"></span>
+                </div>
+                <div id="rowOrth" class="flex items-center justify-between py-1.5 border-b border-slate-100">
+                  <span class="text-slate-500">Приход (прав., нач. XX в.):</span>
+                  <span id="cardOrthodox"></span>
+                </div>
+                <div id="rowCath" class="flex items-center justify-between py-1.5 border-b border-slate-100">
+                  <span class="text-slate-500">Приход (кат., нач. XX в.):</span>
+                  <span id="cardCatholic"></span>
+                </div>
+              </div>
+
+              <!-- Copy Link Button -->
+              <div class="pt-2 border-t border-slate-200">
+                <button id="btnCopyWikiLink" title="Скапіяваць спасылку на паселішча" class="w-full flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs py-1.5 px-3 rounded-lg font-medium transition shadow-sm">
+                  <i class="ph ph-copy text-sm"></i>
+                  <span>Скапіяваць спасылку</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Surnames Recorded in Settlement -->
+            <div>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center justify-between">
+                <span>Зафіксаваныя прозвішчы</span>
+                <span id="cardSurnamesCount" class="text-emerald-700 font-semibold"></span>
+              </h4>
+              <div id="cardSurnamesList" class="flex flex-wrap gap-1.5"></div>
+            </div>
+          </div>
+
+          <!-- Surname Detail View -->
+          <div id="surnameDetailView" class="hidden space-y-4">
+            <button id="btnBackFromSurname" class="text-xs text-emerald-700 hover:text-emerald-900 flex items-center gap-1 font-semibold mb-2">
+              <i class="ph ph-arrow-left"></i> Назад да вынікаў
+            </button>
+            
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+              <div>
+                <span class="text-[11px] font-semibold uppercase tracking-wider bg-amber-100 text-amber-800 px-2 py-0.5 rounded">Арэал прозвішча</span>
+                <h2 id="surnameCardTitle" class="text-2xl font-bold text-slate-800 mt-1"></h2>
+                <div id="surnameCardCount" class="text-xs text-emerald-700 font-semibold mt-1"></div>
+              </div>
+
+              <!-- Compact Action Buttons Row -->
+              <div class="flex items-center gap-1.5 pt-2 border-t border-slate-200">
+                <button id="btnCopySurnameWikiLink" title="Скапіяваць спасылку на прозвішча" class="flex-1 flex items-center justify-center gap-1 bg-slate-800 hover:bg-slate-700 text-white text-xs py-1.5 px-2.5 rounded-lg font-medium transition shadow-sm">
+                  <i class="ph ph-copy text-sm"></i>
+                  <span>Скапіяваць спасылку</span>
+                </button>
+                <a id="btnExportGeoJSON" href="#" download title="Экспарт у фармат GeoJSON" class="flex items-center justify-center gap-1 bg-emerald-700 hover:bg-emerald-800 text-white text-xs py-1.5 px-2.5 rounded-lg font-medium transition shadow-sm">
+                  <i class="ph ph-file-code text-sm"></i>
+                  <span>GeoJSON</span>
+                </a>
+                <a id="btnExportCSV" href="#" download title="Экспарт у табліцу CSV" class="flex items-center justify-center gap-1 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs py-1.5 px-2.5 rounded-lg font-medium transition shadow-sm">
+                  <i class="ph ph-file-csv text-sm"></i>
+                  <span>CSV</span>
+                </a>
+              </div>
+            </div>
+
+            <!-- District Density Stats Table -->
+            <div id="surnameDensitySection" class="space-y-2">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center justify-between">
+                <span>Шчыльнасць па раёнах</span>
+                <span class="text-[10px] text-slate-400 font-normal">удзел у вёсках раёна</span>
+              </h4>
+              <div id="surnameDensityList" class="space-y-1 text-xs"></div>
+            </div>
+
+            <!-- Settlements Grouping & Accordion -->
+            <div class="pt-2 border-t border-slate-200">
+              <div class="flex items-center justify-between mb-2">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600">Населеныя пункты</h4>
+                <!-- Geographic Unit Switcher -->
+                <select id="selGeoGroup" class="text-xs border border-slate-300 rounded px-2 py-1 bg-white text-slate-700 focus:ring-1 focus:ring-emerald-600">
+                  <option value="district">Сучасны раён</option>
+                  <option value="uezd">Павет XIX ст. (Уезд)</option>
+                  <option value="powiat_18">Павет XVIII ст. (ВКЛ)</option>
+                  <option value="volost">Воласць</option>
+                </select>
+              </div>
+              <div id="surnameSettlementsGrouped" class="space-y-2"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- TAB 2: Multi-Surname Comparison Panel -->
+      <div id="panelCompare" class="hidden flex-1 flex flex-col overflow-hidden">
+        <div class="p-4 border-b border-slate-200 bg-slate-50 shrink-0 space-y-3">
+          <div>
+            <h3 class="font-bold text-sm text-slate-800">Параўнанне арэалаў прозвішчаў</h3>
+            <p class="text-[11px] text-slate-500">Параўнайце 2–5 прозвішчаў рознымі колерамі або аб'яднайце карані (напр. <em>Літвін</em> і <em>Ліцвін</em>) у адзін супольны масіў.</p>
+          </div>
+
+          <!-- Surnames Tag List -->
+          <div class="space-y-1.5" id="multiTagsContainer"></div>
+
+          <!-- Add Input -->
+          <div class="flex items-center gap-2">
+            <input 
+              type="text" 
+              id="inputAddCompareSurname" 
+              placeholder="Дадаць прозвішча (напр. Літвін)..." 
+              class="flex-1 py-1.5 px-3 bg-white border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-emerald-600 outline-none"
+            />
+            <button id="btnAddCompareTag" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-semibold transition">
+              + Дадаць
+            </button>
+          </div>
+
+          <!-- Combine Checkbox -->
+          <div class="flex items-center justify-between text-xs pt-1">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" id="chkCombineSurnames" class="rounded text-emerald-700 focus:ring-emerald-500 w-3.5 h-3.5">
+              <span class="text-[11px] font-medium text-slate-700">Аб'яднаць у адзіны этнічны арэал (адным колерам)</span>
+            </label>
+            <button id="btnRunCompare" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition shadow-sm">
+              Паказаць
+            </button>
+          </div>
+        </div>
+
+        <!-- Comparison Results Content -->
+        <div id="compareContent" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+          <div id="compareEmptyState" class="text-center text-slate-400 py-10 text-xs">
+            Увядзіце прозвішчы вышэй і націсніце <strong>Паказаць</strong>.
+          </div>
+          <div id="compareResultsSection" class="hidden space-y-4">
+            <!-- Legend and Counts -->
+            <div id="compareLegend" class="space-y-1.5"></div>
+            <!-- Top Districts -->
+            <div>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">Канцэнтрацыя па раёнах</h4>
+              <div id="compareTopDistricts" class="space-y-1 text-xs"></div>
+            </div>
+            <!-- Settlements List -->
+            <div>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">Паселішчы на мапе</h4>
+              <div id="compareSettlementsList" class="space-y-1.5"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: Surname Suffix Explorer (Фіналі) -->
+      <div id="panelSuffix" class="hidden flex-1 flex flex-col overflow-hidden">
+        <!-- Header & Mode Switcher -->
+        <div class="p-3.5 border-b border-slate-200 bg-slate-50 shrink-0 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+              <i class="ph ph-tree-structure text-emerald-700"></i> Геаграфія фіналяў
+            </h3>
+            <span class="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full">64 194 прозвішчы</span>
+          </div>
+
+          <!-- Sub-mode Toggle: Single vs Competition -->
+          <div class="flex items-center gap-1 bg-slate-200/80 p-0.5 rounded-lg text-xs font-semibold">
+            <button id="btnSuffixModeSingle" class="flex-1 py-1 px-2 rounded-md bg-white text-emerald-800 shadow-sm transition flex items-center justify-center gap-1">
+              <i class="ph ph-magnifying-glass"></i> Адзіночны
+            </button>
+            <button id="btnSuffixModeComp" class="flex-1 py-1 px-2 rounded-md text-slate-600 hover:text-slate-800 transition flex items-center justify-center gap-1">
+              <i class="ph ph-sword"></i> ⚔️ Спаборніцтва
+            </button>
+          </div>
+        </div>
+
+        <!-- 1. Single Suffix Mode Container -->
+        <div id="suffixSingleContainer" class="flex-1 flex flex-col overflow-hidden">
+          <div class="p-3.5 border-b border-slate-200 bg-white shrink-0 space-y-2.5">
+            <p class="text-[11px] text-slate-500">Абярыце характэрны суфікс або ўвядзіце свой:</p>
+            
+            <!-- Preset Buttons: Top Most Popular -->
+            <div class="flex flex-wrap gap-1 text-[11px]">
+              <button data-suffix="оў,еў,ёў,аў,эў" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-оў / -еў / -ёў / -аў</button>
+              <button data-suffix="віч,іч,ыч" class="suffix-btn active px-2 py-1 bg-emerald-800 text-white rounded-md font-medium transition">-віч / -іч</button>
+              <button data-suffix="скі,цкі" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-скі / -цкі</button>
+              <button data-suffix="ка,ко" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-ка / -ко</button>
+              <button data-suffix="ін,ын" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-ін / -ын</button>
+              <button data-suffix="анка,янка,енка,энка" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-енка / -анка</button>
+              <button data-suffix="ук,юк,чук" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-ук / -юк / -чук</button>
+              <button data-suffix="ік,ык" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-ік / -ык</button>
+            </div>
+
+            <!-- Collapsible Secondary / Regional Presets -->
+            <div id="moreSuffixesContainer" class="hidden flex flex-wrap gap-1 text-[11px] pt-1.5 border-t border-dashed border-slate-200">
+              <button data-suffix="ёнак,онак" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-ёнак / -онак</button>
+              <button data-suffix="ак,як" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-ак / -як</button>
+              <button data-suffix="ец,эц" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-ец / -эц</button>
+              <button data-suffix="еня,эня" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-еня / -эня</button>
+              <button data-suffix="эйка,ейка,айка" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-эйка / -ейка / -айка</button>
+              <button data-suffix="кевіч" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-кевіч</button>
+              <button data-suffix="ла,йла" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-ла / -йла</button>
+              <button data-suffix="ута,юта" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-ута / -юта</button>
+              <button data-suffix="ух,юх" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-ух / -юх</button>
+              <button data-suffix="ман" class="suffix-btn bg-white border border-slate-300 text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition">-ман</button>
+            </div>
+
+            <!-- Toggle Expand / Collapse Button -->
+            <button id="btnToggleMoreSuffixes" type="button" class="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1 transition select-none">
+              <span id="labelToggleMoreSuffixes">Яшчэ фіналі (10)</span>
+              <i id="iconToggleMoreSuffixes" class="ph ph-caret-down text-xs transition-transform"></i>
+            </button>
+
+            <!-- Custom Suffix Input -->
+            <div class="flex items-center gap-2 pt-1">
+              <input 
+                type="text" 
+                id="inputCustomSuffix" 
+                placeholder="Свой суфікс (напр. ковіч, бек)..." 
+                class="flex-1 py-1.5 px-3 bg-white border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-emerald-600 outline-none"
+              />
+              <button id="btnRunCustomSuffix" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition shadow-sm">
+                Даследаваць
+              </button>
+            </div>
+          </div>
+
+          <!-- Single Suffix Content -->
+          <div id="suffixContent" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+            <!-- Summary Badges -->
+            <div class="grid grid-cols-2 gap-2 text-center">
+              <div class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <div id="suffixStatSurnames" class="text-xl font-bold text-emerald-800">0</div>
+                <div class="text-[10px] uppercase font-semibold text-emerald-700">Унікальных прозвішчаў</div>
+              </div>
+              <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                <div id="suffixStatSettlements" class="text-xl font-bold text-slate-800">0</div>
+                <div class="text-[10px] uppercase font-semibold text-slate-600">Паселішчаў з імі</div>
+              </div>
+            </div>
+
+            <!-- Top Surnames -->
+            <div>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">Найбольш частыя прозвішчы</h4>
+              <div id="suffixTopSurnames" class="flex flex-wrap gap-1.5 text-xs"></div>
+            </div>
+
+            <!-- District Density -->
+            <div>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">Раёны найбольшай канцэнтрацыі (%)</h4>
+              <div id="suffixDistrictsList" class="space-y-1 text-xs"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Competition Suffix Mode Container -->
+        <div id="suffixCompContainer" class="hidden flex-1 flex flex-col overflow-hidden">
+          <div class="p-3.5 border-b border-slate-200 bg-white shrink-0 space-y-2.5">
+            <p class="text-[11px] text-slate-500">
+              Выберыце 2–6 фіналяў для вызначэння дамінуючых арэалаў па 118 раёнах (з пазначэннем зон 50/50):
+            </p>
+
+            <!-- Active Competing Groups List -->
+            <div id="compActiveGroupsList" class="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-slate-50 border border-slate-200 rounded-lg">
+              <!-- Dynamically populated tags with colors -->
+            </div>
+
+            <!-- Quick Add Chips -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between text-[10px] uppercase font-bold text-slate-400">
+                <span>Хуткі выбар фіналяў:</span>
+              </div>
+              <div class="flex flex-wrap gap-1 text-[11px]">
+                <button type="button" onclick="addCompGroup('оў,еў,ёў,аў,эў')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -оў/-еў/-ёў/-аў</button>
+                <button type="button" onclick="addCompGroup('віч,іч,ыч')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -віч/-іч</button>
+                <button type="button" onclick="addCompGroup('скі,цкі')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -скі/-цкі</button>
+                <button type="button" onclick="addCompGroup('ка,ко')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -ка/-ко</button>
+                <button type="button" onclick="addCompGroup('ін,ын')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -ін/-ын</button>
+                <button type="button" onclick="addCompGroup('анка,янка,енка,энка')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -енка/-анка</button>
+                <button type="button" onclick="addCompGroup('ук,юк,чук')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -ук/-юк/-чук</button>
+                <button type="button" onclick="addCompGroup('ік,ык')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -ік/-ык</button>
+              </div>
+
+              <!-- Collapsible Secondary Competition Chips -->
+              <div id="moreCompChipsContainer" class="hidden flex flex-wrap gap-1 text-[11px] pt-1.5 border-t border-dashed border-slate-200">
+                <button type="button" onclick="addCompGroup('ёнак,онак')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -ёнак/-онак</button>
+                <button type="button" onclick="addCompGroup('ак,як')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -ак/-як</button>
+                <button type="button" onclick="addCompGroup('ец,эц')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -ец/-эц</button>
+                <button type="button" onclick="addCompGroup('еня,эня')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -еня/-эня</button>
+                <button type="button" onclick="addCompGroup('эйка,ейка,айка')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -эйка/-ейка</button>
+                <button type="button" onclick="addCompGroup('кевіч')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -кевіч</button>
+                <button type="button" onclick="addCompGroup('ла,йла')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -ла/-йла</button>
+                <button type="button" onclick="addCompGroup('ута,юта')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -ута/-юта</button>
+                <button type="button" onclick="addCompGroup('ух,юх')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -ух/-юх</button>
+                <button type="button" onclick="addCompGroup('ман')" class="px-2 py-0.5 bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700 rounded border border-slate-200 transition">+ -ман</button>
+              </div>
+
+              <!-- Toggle Expand / Collapse Button -->
+              <button id="btnToggleMoreCompChips" type="button" class="text-[11px] text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1 transition select-none">
+                <span id="labelToggleMoreCompChips">Яшчэ фіналі (10)</span>
+                <i id="iconToggleMoreCompChips" class="ph ph-caret-down text-xs transition-transform"></i>
+              </button>
+            </div>
+
+            <!-- Custom Suffix Add & Controls -->
+            <div class="flex items-center gap-1.5 pt-1">
+              <input 
+                type="text" 
+                id="inputCompCustomSuffix" 
+                placeholder="Свая фіналь (напр. ута,юта)..." 
+                class="flex-1 py-1.5 px-3 bg-white border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-emerald-600 outline-none"
+              />
+              <button id="btnAddCompCustom" type="button" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-xs font-semibold">
+                + Дадаць
+              </button>
+            </div>
+
+            <!-- Vis Mode Selector (Hexagon Tiles vs District Circles) -->
+            <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
+              <button id="btnCompModeHex" type="button" class="flex-1 py-1 px-2 rounded-md bg-white text-emerald-800 shadow-sm transition flex items-center justify-center gap-1">
+                <i class="ph ph-polygon"></i> ⬡ Плітка (Гексагоны)
+              </button>
+              <button id="btnCompModeCircles" type="button" class="flex-1 py-1 px-2 rounded-md text-slate-600 hover:text-slate-800 transition flex items-center justify-center gap-1">
+                <i class="ph ph-circle"></i> ⭕ Раённыя кругі
+              </button>
+            </div>
+
+            <!-- Display Options: Show points checkbox & 50/50 margin threshold -->
+            <div class="flex items-center justify-between pt-1 text-[11px] border-t border-slate-100">
+              <label class="flex items-center gap-1.5 text-slate-700 cursor-pointer select-none">
+                <input type="checkbox" id="chkCompShowPoints" class="rounded text-emerald-700 focus:ring-emerald-500 w-3.5 h-3.5">
+                <span class="font-medium">Паказваць кропкі</span>
+              </label>
+
+              <label class="flex items-center gap-1 text-slate-600">
+                <span>Парог 50/50:</span>
+                <select id="selCompMargin" class="py-0.5 px-1 bg-white border border-slate-300 rounded text-xs">
+                  <option value="0.05">5% (строгі)</option>
+                  <option value="0.10" selected>10% (стандартны)</option>
+                  <option value="0.15">15% (шырокі)</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="pt-1">
+              <button id="btnRunCompetition" type="button" class="w-full py-2 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-bold transition shadow-sm flex items-center justify-center gap-1.5">
+                <i class="ph ph-sword"></i> <span>Запусціць спаборніцтва фіналяў</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Competition Results Scroll View -->
+          <div id="compResultsContent" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+            <div id="compEmptyState" class="text-center text-slate-400 py-10 text-xs">
+              Абярыце фіналі вышэй і націсніце <strong>Спаборнічаць</strong> для пабудовы карты дамінавання.
+            </div>
+
+            <div id="compResultsSection" class="hidden space-y-4">
+              <!-- Summary Leaderboard Badges -->
+              <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600 mb-2 flex items-center justify-between">
+                  <span>Перамогі па раёнах</span>
+                  <span id="compTotalDistrictsCount" class="text-slate-400 text-[10px]">118 раёнаў</span>
+                </h4>
+                <div id="compLeaderboard" class="grid grid-cols-2 gap-2"></div>
+              </div>
+
+              <!-- Districts List Sorted by Margin -->
+              <div>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">Раёны і маржа перавагі</h4>
+                <div id="compDistrictsList" class="space-y-1.5 text-xs"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: District Density Leaderboard -->
+      <div id="panelDensity" class="hidden flex-1 flex flex-col overflow-hidden">
+        <div class="p-4 border-b border-slate-200 bg-slate-50 shrink-0 space-y-3">
+          <div>
+            <h3 class="font-bold text-sm text-slate-800">Рэйтынг шчыльнасці па 118 раёнах</h3>
+            <p class="text-[11px] text-slate-500">Доля паселішчаў раёна, дзе зафіксавана шуканае прозвішча (разлік ад агульнай колькасці гістарычных вёсак раёна).</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <input 
+              type="text" 
+              id="inputDensitySurname" 
+              placeholder="Прозвішча ці корань (напр. Каралёў, Літв*)..." 
+              class="flex-1 py-1.5 px-3 bg-white border border-slate-300 rounded-lg text-xs focus:ring-1 focus:ring-emerald-600 outline-none"
+            />
+            <button id="btnRunDensity" class="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-bold transition shadow-sm">
+              Разлічыць
+            </button>
+          </div>
+
+          <!-- Color Legend -->
+          <div class="flex items-center gap-2 text-[10px] text-slate-600 pt-1">
+            <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-600"></span> ≥15%</span>
+            <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span> 7–15%</span>
+            <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span> 3–7%</span>
+            <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span> &lt;3%</span>
+          </div>
+        </div>
+
+        <div id="densityContent" class="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-2">
+          <div id="densityLeaderboard" class="space-y-1.5 text-xs">
+            <div class="text-center text-slate-400 py-10 text-xs">
+              Увядзіце прозвішча вышэй, каб пабачыць працэнтнае размеркаванне па ўсіх 118 раёнах Беларусі.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Points Counter -->
+      <div class="p-2.5 bg-slate-100 border-t border-slate-200 text-center text-[11px] text-slate-600 shrink-0 flex items-center justify-between px-4">
+        <span>Адлюстроўваецца кропак:</span>
+        <span id="totalPointsCounter" class="font-bold text-emerald-800 bg-white px-2 py-0.5 rounded border border-slate-200">0</span>
+      </div>
+    </aside>
+
+    <!-- Map Canvas -->
+    <main class="flex-1 relative h-full">
+      <div id="map"></div>
+
+      <!-- Map Layer Switcher (Clusters, Dots, Heatmap) positioned next to zoom buttons -->
+      <div class="absolute top-2.5 left-[54px] z-[400] bg-white/95 backdrop-blur shadow-md border border-slate-200 rounded-lg p-1 flex items-center gap-1 text-xs font-medium">
+        <button id="btnLayerClusters" class="layer-btn active flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-emerald-800 text-white shadow-sm transition">
+          <i class="ph ph-circles-three text-sm"></i> <span>Кластары</span>
+        </button>
+        <button id="btnLayerDots" class="layer-btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-slate-700 hover:bg-slate-100 transition">
+          <i class="ph ph-circle text-sm"></i> <span>Кропкі (без кластараў)</span>
+        </button>
+        <button id="btnLayerHeat" class="layer-btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-slate-700 hover:bg-slate-100 transition">
+          <i class="ph ph-flame text-sm"></i> <span>Цяпло (Heatmap)</span>
+        </button>
+        <label class="flex items-center gap-1.5 ml-1.5 text-xs font-semibold text-slate-700 cursor-pointer select-none border-l border-slate-200 pl-2">
+          <input type="checkbox" id="chkAutoViewportSettlements" checked class="rounded text-emerald-700 focus:ring-emerald-500 w-3.5 h-3.5">
+          <span title="Аўтаматычна адлюстроўваць усе гістарычныя вёскі пры набліжэнні карты (зум ≥ 10)">📍 Вёскі пры набліжэнні</span>
+        </label>
+      </div>
+    </main>
+  </div>
+
+  <!-- CSV Compare Modal -->
+  <div id="compareModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
+      <div class="bg-emerald-800 text-white px-5 py-3.5 flex items-center justify-between">
+        <div class="flex items-center gap-2 font-bold text-sm">
+          <i class="ph ph-upload-simple text-xl text-emerald-300"></i>
+          <span>Імпарт вашай базы прозвішчаў (CSV / TXT)</span>
+        </div>
+        <button id="btnCloseCompareModal" class="text-emerald-200 hover:text-white text-lg">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+
+      <div class="p-5 space-y-4 overflow-y-auto flex-1">
+        <p class="text-xs text-slate-600">
+          Загрузіце спіс вашых радавых прозвішчаў (у фармаце <strong>CSV</strong> альбо просты тэкставы файл з прозвішчамі па радках). 
+          Сістэма аўтаматычна знойдзе населеныя пункты, дзе сустракаюцца адразу некалькі вашых фамілій.
+        </p>
+
+        <div id="dropzone" class="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-6 text-center cursor-pointer transition bg-slate-50">
+          <i class="ph ph-cloud-arrow-up text-3xl text-emerald-700 mb-2"></i>
+          <p class="text-xs font-medium text-slate-700">Перацягніце файл сюды або клікніце для выбару</p>
+          <p class="text-[10px] text-slate-400 mt-1">Падтрымліваюцца .csv, .txt</p>
+          <input type="file" id="fileInput" accept=".csv,.txt" class="hidden" />
+        </div>
+
+        <div id="compareResults" class="hidden space-y-3 pt-3 border-t border-slate-200">
+          <div class="flex items-center justify-between text-xs">
+            <span class="text-slate-500">Супадзенняў па прозвішчах:</span>
+            <span id="matchedCount" class="font-bold text-emerald-700"></span>
+          </div>
+          <h5 class="text-xs font-bold uppercase tracking-wider text-slate-500">Кропкі перасячэння (Радавыя кластары):</h5>
+          <div id="clusterList" class="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="hidden fixed bottom-6 right-6 bg-slate-900 text-white text-xs px-4 py-2.5 rounded-lg shadow-xl z-50 flex items-center gap-2 transition-opacity">
+    <i class="ph ph-check-circle text-emerald-400 text-base"></i>
+    <span id="toastMsg">Спасылка скапіявана!</span>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    // 1. Map Initialization
+    const map = L.map('map', {
+      center: [53.9006, 27.5590],
+      zoom: 7,
+      zoomControl: true
+    });
+
+    // Base Maps (OpenStreetMap + Historical Maps from orda.of.by)
+    const osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+      maxZoom: 19
+    });
+
+    const schubert3vLayer = L.tileLayer('https://host2517117152.of.by/.tiles/3v_jun20/Z{z}/{y}/{x}.jpg', {
+      attribution: '3-верстка (Шуберт XIX ст.) &copy; <a href="https://orda.of.by/.map/" target="_blank">orda.of.by</a>',
+      minZoom: 8,
+      maxZoom: 15
+    });
+
+    const oneVerstLayer = L.tileLayer('https://host2517117152.of.by/.tiles/1v_apr21/Z{z}/{y}/{x}.jpg', {
+      attribution: '1-верстка (пач. XX ст.) &copy; <a href="https://orda.of.by/.map/" target="_blank">orda.of.by</a>',
+      minZoom: 9,
+      maxZoom: 16
+    });
+
+    const rkkaLayer = L.tileLayer('https://host2517117152.of.by/.tiles/rkka_v4/Z{z}/{y}/{x}.jpg', {
+      attribution: 'РККА 500м (1930–1940-я гг.) &copy; <a href="https://orda.of.by/.map/" target="_blank">orda.of.by</a>',
+      minZoom: 8,
+      maxZoom: 15
+    });
+
+    const wigLayer = L.tileLayer('https://host2517117152.of.by/.tiles/wig/Z{z}/{y}/{x}.jpg', {
+      attribution: 'WIG 1 км (Польская карта 1930-х) &copy; <a href="https://orda.of.by/.map/" target="_blank">orda.of.by</a>',
+      minZoom: 8,
+      maxZoom: 15
+    });
+
+    const tenVerstLayer = L.tileLayer('https://host2517117152.of.by/.tiles/10v/Z{z}/{y}/{x}.jpg', {
+      attribution: '10-верстка (Стральбіцкі) &copy; <a href="https://orda.of.by/.map/" target="_blank">orda.of.by</a>',
+      minZoom: 6,
+      maxZoom: 13
+    });
+
+    // Default to OpenStreetMap
+    osmLayer.addTo(map);
+
+    const baseMaps = {
+      "🗺️ OpenStreetMap (Сучасная)": osmLayer,
+      "📜 3-верстка (Шуберт XIX ст.)": schubert3vLayer,
+      "🎖️ 1-верстка (пач. XX ст.)": oneVerstLayer,
+      "⚔️ РККА 500м (1930–40-я)": rkkaLayer,
+      "🇵🇱 WIG 1 км (Польская 1930-я)": wigLayer,
+      "📖 10-верстка (Стральбіцкі)": tenVerstLayer
+    };
+
+    L.control.layers(baseMaps, null, { position: 'topright', collapsed: true }).addTo(map);
+
+    // Map Layers
+    const markersCluster = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      maxClusterRadius: 40,
+      spiderfyOnMaxZoom: true
+    });
+    const dotsLayer = L.featureGroup();
+    const dominanceLayer = L.featureGroup();
+    const hexLayer = L.featureGroup();
+    const viewportSettlementsLayer = L.featureGroup();
+    let heatLayer = null;
+
+    map.addLayer(markersCluster);
+
+    // Map Display Mode state: 'clusters' | 'dots' | 'heat'
+    let currentMapMode = 'clusters';
+    let currentActivePoints = [];
+
+    // State Variables
+    let currentFilter = "all";
+    let searchDebounce = null;
+    let currentSettlement = null;
+    let currentSurname = null;
+    let compareTags = ["Літвін", "Ліцвін"];
+
+    // DOM References
+    const searchInput = document.getElementById('searchInput');
+    const clearSearch = document.getElementById('clearSearch');
+    const chkAllFields = document.getElementById('chkAllFields');
+    const totalPointsCounter = document.getElementById('totalPointsCounter');
+
+    // Panels
+    const panelSearch = document.getElementById('panelSearch');
+    const panelCompare = document.getElementById('panelCompare');
+    const panelSuffix = document.getElementById('panelSuffix');
+    const panelDensity = document.getElementById('panelDensity');
+
+    // Sub-views in Search
+    const welcomeView = document.getElementById('welcomeView');
+    const resultsView = document.getElementById('resultsView');
+    const settlementDetailView = document.getElementById('settlementDetailView');
+    const surnameDetailView = document.getElementById('surnameDetailView');
+
+    // Tab Navigation Buttons
+    const tabBtns = {
+      search: document.getElementById('tabNavSearch'),
+      compare: document.getElementById('tabNavCompare'),
+      suffix: document.getElementById('tabNavSuffix'),
+      density: document.getElementById('tabNavDensity')
+    };
+
+    function switchTab(target) {
+      Object.keys(tabBtns).forEach(k => {
+        const b = tabBtns[k];
+        b.classList.remove('active', 'border-emerald-700', 'text-emerald-800');
+        b.classList.add('border-transparent', 'text-slate-500');
+      });
+      tabBtns[target].classList.add('active', 'border-emerald-700', 'text-emerald-800');
+      tabBtns[target].classList.remove('border-transparent', 'text-slate-500');
+
+      panelSearch.classList.add('hidden');
+      panelCompare.classList.add('hidden');
+      panelSuffix.classList.add('hidden');
+      panelDensity.classList.add('hidden');
+
+      if (target === 'search') panelSearch.classList.remove('hidden');
+      if (target === 'compare') {
+        panelCompare.classList.remove('hidden');
+        renderCompareTags();
+      }
+      if (target === 'suffix') {
+        panelSuffix.classList.remove('hidden');
+        loadSuffixAnalysis('віч,іч,ыч');
+      }
+      if (target === 'density') panelDensity.classList.remove('hidden');
+    }
+
+    tabBtns.search.onclick = () => switchTab('search');
+    tabBtns.compare.onclick = () => switchTab('compare');
+    tabBtns.suffix.onclick = () => switchTab('suffix');
+    tabBtns.density.onclick = () => switchTab('density');
+
+    // Layer Switcher Buttons
+    const btnLayerClusters = document.getElementById('btnLayerClusters');
+    const btnLayerDots = document.getElementById('btnLayerDots');
+    const btnLayerHeat = document.getElementById('btnLayerHeat');
+
+    function setLayerMode(mode) {
+      currentMapMode = mode;
+      [btnLayerClusters, btnLayerDots, btnLayerHeat].forEach(btn => {
+        btn.classList.remove('active', 'bg-emerald-800', 'text-white', 'shadow-sm');
+        btn.classList.add('text-slate-700');
+      });
+
+      if (mode === 'clusters') {
+        btnLayerClusters.classList.add('active', 'bg-emerald-800', 'text-white', 'shadow-sm');
+        btnLayerClusters.classList.remove('text-slate-700');
+      } else if (mode === 'dots') {
+        btnLayerDots.classList.add('active', 'bg-emerald-800', 'text-white', 'shadow-sm');
+        btnLayerDots.classList.remove('text-slate-700');
+      } else if (mode === 'heat') {
+        btnLayerHeat.classList.add('active', 'bg-emerald-800', 'text-white', 'shadow-sm');
+        btnLayerHeat.classList.remove('text-slate-700');
+      }
+
+      renderPointsOnMap(currentActivePoints, mode);
+    }
+
+    btnLayerClusters.onclick = () => setLayerMode('clusters');
+    btnLayerDots.onclick = () => setLayerMode('dots');
+    btnLayerHeat.onclick = () => setLayerMode('heat');
+
+    // Central Point Renderer Supporting 3 Modes
+    function renderPointsOnMap(points, mode = currentMapMode) {
+      currentActivePoints = points || [];
+      markersCluster.clearLayers();
+      dotsLayer.clearLayers();
+      if (heatLayer) {
+        map.removeLayer(heatLayer);
+        heatLayer = null;
+      }
+      map.removeLayer(markersCluster);
+      map.removeLayer(dotsLayer);
+
+      const validPoints = currentActivePoints.filter(p => p.lat && p.lon);
+      totalPointsCounter.innerText = validPoints.length;
+
+      if (validPoints.length === 0) return;
+
+      const bounds = [];
+
+      if (mode === 'clusters') {
+        validPoints.forEach(p => {
+          const color = p.color || '#047857';
+          const title = p.name_be && p.name_be !== "не існуе" ? p.name_be : p.name_ru;
+          const marker = L.marker([p.lat, p.lon]);
+          marker.bindPopup(`
+            <div class="text-xs font-sans">
+              <strong class="text-emerald-800">${title}</strong> (${p.settlement_type || 'вёска'})<br>
+              ${p.district} раён<br>
+              ${p.surname ? 'Прозвішча: <strong>' + p.surname + '</strong><br>' : ''}
+              <button onclick="window.location.hash='/settlement/${p.slug || p.id}'" class="mt-1.5 bg-emerald-700 hover:bg-emerald-800 text-white px-2 py-0.5 rounded text-[10px] font-semibold">Адкрыць картку</button>
+            </div>
+          `);
+          markersCluster.addLayer(marker);
+          bounds.push([p.lat, p.lon]);
+        });
+        map.addLayer(markersCluster);
+
+      } else if (mode === 'dots') {
+        validPoints.forEach(p => {
+          const color = p.color || '#059669';
+          const title = p.name_be && p.name_be !== "не існуе" ? p.name_be : p.name_ru;
+          const circle = L.circleMarker([p.lat, p.lon], {
+            radius: 6,
+            fillColor: color,
+            fillOpacity: 0.82,
+            color: '#ffffff',
+            weight: 1.2
+          });
+          circle.bindPopup(`
+            <div class="text-xs font-sans">
+              <strong class="text-emerald-800">${title}</strong><br>
+              ${p.district} раён<br>
+              ${p.surname ? 'Прозвішча: <strong>' + p.surname + '</strong><br>' : ''}
+              <button onclick="window.location.hash='/settlement/${p.slug || p.id}'" class="mt-1 bg-emerald-700 text-white px-2 py-0.5 rounded text-[10px] font-semibold">Адкрыць картку</button>
+            </div>
+          `);
+          dotsLayer.addLayer(circle);
+          bounds.push([p.lat, p.lon]);
+        });
+        map.addLayer(dotsLayer);
+
+      } else if (mode === 'heat') {
+        const heatData = validPoints.map(p => [p.lat, p.lon, 0.75]);
+        heatLayer = L.heatLayer(heatData, {
+          radius: 22,
+          blur: 16,
+          maxZoom: 12,
+          minOpacity: 0.35,
+          gradient: { 0.4: '#3b82f6', 0.65: '#eab308', 0.85: '#f97316', 1.0: '#dc2626' }
+        });
+        heatLayer.addTo(map);
+        validPoints.forEach(p => bounds.push([p.lat, p.lon]));
+      }
+
+      if (bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
+      }
+    }
+
+    function clearMap() {
+      currentActivePoints = [];
+      markersCluster.clearLayers();
+      dotsLayer.clearLayers();
+      dominanceLayer.clearLayers();
+      hexLayer.clearLayers();
+      if (heatLayer) {
+        map.removeLayer(heatLayer);
+        heatLayer = null;
+      }
+      if (map.hasLayer(dominanceLayer)) map.removeLayer(dominanceLayer);
+      if (map.hasLayer(hexLayer)) map.removeLayer(hexLayer);
+      totalPointsCounter.innerText = '0';
+    }
+
+    // Auto-load settlements in current view when zoomed in (zoom >= 10)
+    let viewportDebounce = null;
+    async function loadViewportSettlements() {
+      const chk = document.getElementById('chkAutoViewportSettlements');
+      if (!chk || !chk.checked) {
+        viewportSettlementsLayer.clearLayers();
+        if (map.hasLayer(viewportSettlementsLayer)) map.removeLayer(viewportSettlementsLayer);
+        return;
+      }
+
+      if (map.getZoom() < 10) {
+        viewportSettlementsLayer.clearLayers();
+        if (map.hasLayer(viewportSettlementsLayer)) map.removeLayer(viewportSettlementsLayer);
+        return;
+      }
+
+      const b = map.getBounds();
+      try {
+        const res = await fetch(`/api/settlements/viewport?south=${b.getSouth()}&west=${b.getWest()}&north=${b.getNorth()}&east=${b.getEast()}&limit=400`);
+        const data = await res.json();
+        
+        viewportSettlementsLayer.clearLayers();
+        (data.settlements || []).forEach(st => {
+          if (!st.lat || !st.lon) return;
+          const title = st.name_be && st.name_be !== "не існуе" ? st.name_be : st.name_ru;
+          const marker = L.circleMarker([st.lat, st.lon], {
+            radius: 5,
+            fillColor: '#059669',
+            color: '#ffffff',
+            weight: 1.5,
+            fillOpacity: 0.85
+          });
+          marker.bindPopup(`
+            <div class="text-xs font-sans">
+              <strong class="text-emerald-800 text-sm">${title}</strong><br>
+              <span class="text-slate-500">${st.district} раён • ${st.settlement_type || 'вёска'}</span><br>
+              ${st.estate_19 ? 'Маёнтак: ' + st.estate_19 + '<br>' : ''}
+              ${st.parish_orthodox ? 'Прыход: ' + st.parish_orthodox + '<br>' : ''}
+              <button onclick="window.location.hash='/settlement/${st.slug || st.id}'" class="mt-2 bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1 rounded text-xs font-semibold">Адкрыць картку і прозвішчы</button>
+            </div>
+          `);
+          viewportSettlementsLayer.addLayer(marker);
+        });
+
+        if (!map.hasLayer(viewportSettlementsLayer)) {
+          map.addLayer(viewportSettlementsLayer);
+        }
+      } catch (err) {
+        console.error("Viewport settlements error:", err);
+      }
+    }
+
+    map.on('moveend', () => {
+      clearTimeout(viewportDebounce);
+      viewportDebounce = setTimeout(loadViewportSettlements, 250);
+    });
+
+    const chkAutoViewportSettlements = document.getElementById('chkAutoViewportSettlements');
+    if (chkAutoViewportSettlements) {
+      chkAutoViewportSettlements.addEventListener('change', loadViewportSettlements);
+    }
+
+    // Filter Buttons (Усе / Паселішчы / Прозвішчы)
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => {
+          b.classList.remove('bg-emerald-800', 'text-white');
+          b.classList.add('bg-white', 'text-slate-600', 'border', 'border-slate-300');
+        });
+        btn.classList.add('bg-emerald-800', 'text-white');
+        btn.classList.remove('bg-white', 'text-slate-600', 'border');
+        currentFilter = btn.dataset.type;
+        performSearch(searchInput.value);
+      });
+    });
+
+    // Checkbox All Fields change
+    chkAllFields.addEventListener('change', () => {
+      if (searchInput.value.trim()) {
+        performSearch(searchInput.value.trim());
+      }
+    });
+
+    // Search Input Listener
+    searchInput.addEventListener('input', (e) => {
+      clearTimeout(searchDebounce);
+      const val = e.target.value.trim();
+      clearSearch.classList.toggle('hidden', !val);
+
+      if (!val) {
+        showWelcome();
+        clearMap();
+        return;
+      }
+
+      searchDebounce = setTimeout(() => {
+        performSearch(val);
+      }, 250);
+    });
+
+    clearSearch.addEventListener('click', () => {
+      searchInput.value = '';
+      clearSearch.classList.add('hidden');
+      showWelcome();
+      clearMap();
+      window.location.hash = '';
+    });
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').innerText = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 2800);
+    }
+
+    function showWelcome() {
+      welcomeView.classList.remove('hidden');
+      resultsView.classList.add('hidden');
+      settlementDetailView.classList.add('hidden');
+      surnameDetailView.classList.add('hidden');
+    }
+
+    function showResults() {
+      welcomeView.classList.add('hidden');
+      resultsView.classList.remove('hidden');
+      settlementDetailView.classList.add('hidden');
+      surnameDetailView.classList.add('hidden');
+    }
+
+    // Main Search Action
+    async function performSearch(query) {
+      if (!query) return;
+      try {
+        const allFieldsParam = chkAllFields.checked ? 'true' : 'false';
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&type=${currentFilter}&all_fields=${allFieldsParam}&limit=500`);
+        const data = await res.json();
+        renderResults(data, `Населеныя пункты (${data.settlements ? data.settlements.length : 0})`);
+      } catch (err) {
+        console.error("Search error:", err);
+      }
+    }
+
+    function renderResults(data, sectionTitle = 'Населеныя пункты') {
+      showResults();
+      clearMap();
+
+      const settlementsList = document.getElementById('settlementsList');
+      const surnamesList = document.getElementById('surnamesList');
+      const settlementsSection = document.getElementById('settlementsSection');
+      const surnamesSection = document.getElementById('surnamesSection');
+      document.getElementById('settlementsSectionTitle').innerText = sectionTitle;
+
+      settlementsList.innerHTML = '';
+      surnamesList.innerHTML = '';
+
+      const settlements = data.settlements || [];
+      const surnames = data.surnames || [];
+
+      if (surnames.length > 0 && (currentFilter === 'all' || currentFilter === 'surnames')) {
+        surnamesSection.classList.remove('hidden');
+        document.getElementById('surnamesCount').innerText = `${surnames.length}`;
+        surnames.forEach(s => {
+          const el = document.createElement('div');
+          el.className = 'p-2 bg-slate-50 hover:bg-emerald-50 rounded-lg cursor-pointer border border-slate-200 transition flex items-center justify-between text-xs';
+          el.innerHTML = `
+            <span class="font-bold text-slate-800">${s.surname_be}</span>
+            <span class="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-semibold">${s.settlements_count} вёсак</span>
+          `;
+          el.onclick = () => {
+            window.location.hash = `/surname/${encodeURIComponent(s.slug || s.surname_be)}`;
+          };
+          surnamesList.appendChild(el);
+        });
+      } else {
+        surnamesSection.classList.add('hidden');
+      }
+
+      if (settlements.length > 0 && (currentFilter === 'all' || currentFilter === 'settlements')) {
+        settlementsSection.classList.remove('hidden');
+        document.getElementById('settlementsCount').innerText = `${settlements.length}`;
+        
+        settlements.forEach(st => {
+          const el = document.createElement('div');
+          el.className = 'p-2.5 bg-slate-50 hover:bg-emerald-50 rounded-lg cursor-pointer border border-slate-200 transition text-xs space-y-0.5';
+          const title = st.name_be && st.name_be !== "не існуе" ? st.name_be : st.name_ru;
+          const subtitle = st.name_be === "не існуе" ? '<span class="text-amber-700 font-medium">(не існуе)</span>' : (st.name_ru ? `рус. ${st.name_ru}` : '');
+          
+          el.innerHTML = `
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-800">${title} ${subtitle}</span>
+              <span class="text-[10px] text-slate-500 uppercase">${st.settlement_type || 'вёска'}</span>
+            </div>
+            <div class="text-[11px] text-slate-500">${st.district} р-н • ${st.volost || ''} вол.</div>
+          `;
+          el.onclick = () => {
+            window.location.hash = `/settlement/${st.slug || st.id}`;
+          };
+          settlementsList.appendChild(el);
+        });
+
+        renderPointsOnMap(settlements);
+      } else {
+        settlementsSection.classList.add('hidden');
+      }
+    }
+
+    // Settlement Detail View
+    async function loadSettlement(identifier) {
+      try {
+        switchTab('search');
+        const res = await fetch(`/api/settlement/${encodeURIComponent(identifier)}`);
+        if (!res.ok) return;
+        const st = await res.json();
+        currentSettlement = st;
+
+        welcomeView.classList.add('hidden');
+        resultsView.classList.add('hidden');
+        surnameDetailView.classList.add('hidden');
+        settlementDetailView.classList.remove('hidden');
+
+        const isExtinct = st.name_be === "не існуе";
+        document.getElementById('cardTitle').innerText = isExtinct ? st.name_ru : st.name_be;
+        document.getElementById('cardSubtitle').innerHTML = isExtinct ? '<span class="text-amber-600 font-semibold">Назва (бел.): не існуе</span>' : (st.name_ru ? `(Название рус.: ${st.name_ru})` : '');
+        document.getElementById('cardType').innerText = st.settlement_type || 'Деревня';
+        
+        document.getElementById('cardDistrict').innerText = st.district || '—';
+        document.getElementById('cardSelsoviet').innerText = st.selsoviet || '—';
+        document.getElementById('cardPowiat18').innerText = st.powiat_18 || '—';
+        document.getElementById('cardOwner18').innerText = st.owner_18 || '—';
+        document.getElementById('cardOwner19').innerText = st.owner_19 || '—';
+        document.getElementById('cardUezd').innerText = st.uezd || '—';
+
+        // Interactive Badges for Estates & Parishes
+        const estate18Container = document.getElementById('cardEstate18');
+        if (st.estate_18) {
+          estate18Container.innerHTML = `<button onclick="filterByEstate('${st.estate_18}')" class="inline-flex items-center gap-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-semibold px-2 py-0.5 rounded text-xs transition"><span>${st.estate_18}</span><i class="ph ph-magnifying-glass text-[10px]"></i></button>`;
+        } else {
+          estate18Container.innerText = '—';
+        }
+
+        const estate19Container = document.getElementById('cardEstate19');
+        if (st.estate_19) {
+          estate19Container.innerHTML = `<button onclick="filterByEstate('${st.estate_19}')" class="inline-flex items-center gap-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-semibold px-2 py-0.5 rounded text-xs transition"><span>${st.estate_19}</span><i class="ph ph-magnifying-glass text-[10px]"></i></button>`;
+        } else {
+          estate19Container.innerText = '—';
+        }
+
+        document.getElementById('cardVolost').innerText = st.volost || '—';
+
+        const orthContainer = document.getElementById('cardOrthodox');
+        if (st.parish_orthodox) {
+          orthContainer.innerHTML = `<button onclick="filterByParish('${st.parish_orthodox}')" class="inline-flex items-center gap-1 bg-sky-100 hover:bg-sky-200 text-sky-900 font-semibold px-2 py-0.5 rounded text-xs transition"><span>${st.parish_orthodox}</span><i class="ph ph-magnifying-glass text-[10px]"></i></button>`;
+        } else {
+          orthContainer.innerText = '—';
+        }
+
+        const cathContainer = document.getElementById('cardCatholic');
+        if (st.parish_catholic) {
+          cathContainer.innerHTML = `<button onclick="filterByParish('${st.parish_catholic}')" class="inline-flex items-center gap-1 bg-rose-100 hover:bg-rose-200 text-rose-900 font-semibold px-2 py-0.5 rounded text-xs transition"><span>${st.parish_catholic}</span><i class="ph ph-magnifying-glass text-[10px]"></i></button>`;
+        } else {
+          cathContainer.innerText = '—';
+        }
+
+        // Surnames
+        const surnamesContainer = document.getElementById('cardSurnamesList');
+        surnamesContainer.innerHTML = '';
+        const surnames = st.surnames || [];
+        document.getElementById('cardSurnamesCount').innerText = `${surnames.length}`;
+
+        surnames.forEach(sn => {
+          const pill = document.createElement('button');
+          pill.className = 'text-xs bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800 px-2.5 py-1 rounded-full border border-slate-300 font-medium transition';
+          pill.innerText = sn.surname_be;
+          pill.onclick = () => {
+            window.location.hash = `/surname/${encodeURIComponent(sn.slug || sn.surname_be)}`;
+          };
+          surnamesContainer.appendChild(pill);
+        });
+
+        // Wiki Citation Button
+        document.getElementById('btnCopyWikiLink').onclick = () => {
+          const permalink = `${window.location.origin}${window.location.pathname}#/settlement/${st.slug || st.id}`;
+          const displayName = st.name_be !== "не існуе" ? st.name_be : st.name_ru;
+          const wikiRef = `<ref>{{артыкул |аўтар = Дапаможнік+ |загаловак = ${st.settlement_type || 'вёска'} ${displayName} (${st.district} раён) |выданне = Гістарычныя паселішчы і прозвішчы Беларусі |url = ${permalink}}}</ref>`;
+          navigator.clipboard.writeText(wikiRef).then(() => {
+            showToast("Вікі-спасылка скапіявана!");
+          });
+        };
+
+        renderPointsOnMap([st]);
+
+      } catch (err) {
+        console.error("Load settlement error:", err);
+      }
+    }
+
+    // Surname Detail View
+    async function loadSurname(identifier) {
+      try {
+        switchTab('search');
+        const res = await fetch(`/api/surname/${encodeURIComponent(identifier)}`);
+        if (!res.ok) return;
+        const sn = await res.json();
+        currentSurname = sn;
+
+        welcomeView.classList.add('hidden');
+        resultsView.classList.add('hidden');
+        settlementDetailView.classList.add('hidden');
+        surnameDetailView.classList.remove('hidden');
+
+        document.getElementById('surnameCardTitle').innerText = sn.surname_be;
+        document.getElementById('surnameCardCount').innerText = `Зафіксавана ў ${sn.total_occurrences} населеных пунктах (без абмежавання 12)`;
+
+        document.getElementById('btnExportGeoJSON').href = `/api/export/geojson?surname_slug=${encodeURIComponent(sn.slug || sn.surname_be)}`;
+        document.getElementById('btnExportCSV').href = `/api/export/csv?surname_slug=${encodeURIComponent(sn.slug || sn.surname_be)}`;
+
+        document.getElementById('btnCopySurnameWikiLink').onclick = () => {
+          const permalink = `${window.location.origin}${window.location.pathname}#/surname/${sn.slug || sn.surname_be}`;
+          const wikiRef = `<ref>{{артыкул |аўтар = Дапаможнік+ |загаловак = Арэал прозвішча ${sn.surname_be} |выданне = Гістарычныя паселішчы і прозвішчы Беларусі |url = ${permalink}}}</ref>`;
+          navigator.clipboard.writeText(wikiRef).then(() => {
+            showToast("Вікі-спасылка на прозвішча скапіявана!");
+          });
+        };
+
+        // Render District Density Leaderboard
+        const densityList = document.getElementById('surnameDensityList');
+        densityList.innerHTML = '';
+        (sn.district_density || []).slice(0, 8).forEach(d => {
+          const row = document.createElement('div');
+          row.className = 'p-1.5 rounded bg-white border border-slate-200 flex items-center justify-between text-[11px]';
+          row.innerHTML = `
+            <div class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full" style="background-color: ${d.color}"></span>
+              <span class="font-semibold text-slate-800">${d.district}</span>
+              <span class="text-slate-400">(${d.count} з ${d.total_district_settlements} вёсак)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-16 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                <div class="h-1.5 rounded-full" style="width: ${Math.min(100, d.percentage * 3)}%; background-color: ${d.color}"></div>
+              </div>
+              <span class="font-bold w-10 text-right" style="color: ${d.color}">${d.percentage}%</span>
+            </div>
+          `;
+          densityList.appendChild(row);
+        });
+
+        // Render Grouped Settlements
+        renderSurnameGroupedSettlements('district');
+
+        // Render Points on Map
+        renderPointsOnMap(sn.settlements || []);
+
+      } catch (err) {
+        console.error("Load surname error:", err);
+      }
+    }
+
+    // Grouping settlements by geographic unit
+    const selGeoGroup = document.getElementById('selGeoGroup');
+    selGeoGroup.addEventListener('change', (e) => {
+      renderSurnameGroupedSettlements(e.target.value);
+    });
+
+    function renderSurnameGroupedSettlements(unit = 'district') {
+      if (!currentSurname || !currentSurname.settlements) return;
+      const container = document.getElementById('surnameSettlementsGrouped');
+      container.innerHTML = '';
+
+      const groups = {};
+      currentSurname.settlements.forEach(st => {
+        let key = st[unit] || 'Не вызначана';
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(st);
+      });
+
+      const sortedKeys = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length);
+
+      sortedKeys.forEach(key => {
+        const items = groups[key];
+        const details = document.createElement('details');
+        details.className = 'bg-white border border-slate-200 rounded-lg overflow-hidden text-xs';
+        details.open = sortedKeys.length <= 3; // open first few
+        details.innerHTML = `
+          <summary class="p-2 bg-slate-50 hover:bg-slate-100 font-semibold text-slate-800 cursor-pointer flex items-center justify-between select-none">
+            <span>${key}</span>
+            <span class="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-bold text-[10px]">${items.length}</span>
+          </summary>
+          <div class="p-2 divide-y divide-slate-100 space-y-1">
+            ${items.map(st => {
+              const title = st.name_be !== "не існуе" ? st.name_be : st.name_ru;
+              return `
+                <div onclick="window.location.hash='/settlement/${st.slug || st.id}'" class="py-1 flex items-center justify-between hover:text-emerald-800 cursor-pointer">
+                  <span>${title} <span class="text-[10px] text-slate-400">(${st.district} р-н)</span></span>
+                  <span class="text-[10px] text-slate-400 uppercase">${st.settlement_type || 'вёска'}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+        container.appendChild(details);
+      });
+    }
+
+    // Parish & Estate filters
+    async function filterByParish(parishName) {
+      try {
+        switchTab('search');
+        const res = await fetch(`/api/parish?name=${encodeURIComponent(parishName)}`);
+        const data = await res.json();
+        searchInput.value = '';
+        renderResults({ settlements: data.settlements, surnames: [] }, `Прыход: ${parishName} (${data.total} вёсак)`);
+      } catch (err) {
+        console.error("Parish filter error:", err);
+      }
+    }
+
+    async function filterByEstate(estateName) {
+      try {
+        switchTab('search');
+        const res = await fetch(`/api/estate?name=${encodeURIComponent(estateName)}`);
+        const data = await res.json();
+        searchInput.value = '';
+        renderResults({ settlements: data.settlements, surnames: [] }, `Маёнтак: ${estateName} (${data.total} вёсак)`);
+      } catch (err) {
+        console.error("Estate filter error:", err);
+      }
+    }
+
+    document.getElementById('btnBackFromSettlement').onclick = () => {
+      window.location.hash = '';
+      if (searchInput.value.trim()) showResults(); else showWelcome();
+    };
+
+    document.getElementById('btnBackFromSurname').onclick = () => {
+      window.location.hash = '';
+      if (searchInput.value.trim()) showResults(); else showWelcome();
+    };
+
+    // -------------------------------------------------------------
+    // TAB 2: Multi-Surname Comparison Logic
+    // -------------------------------------------------------------
+    const multiTagsContainer = document.getElementById('multiTagsContainer');
+    const inputAddCompareSurname = document.getElementById('inputAddCompareSurname');
+    const btnAddCompareTag = document.getElementById('btnAddCompareTag');
+    const btnRunCompare = document.getElementById('btnRunCompare');
+    const chkCombineSurnames = document.getElementById('chkCombineSurnames');
+
+    const PALETTE_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+
+    function renderCompareTags() {
+      multiTagsContainer.innerHTML = '';
+      compareTags.forEach((sn, idx) => {
+        const color = PALETTE_COLORS[idx % PALETTE_COLORS.length];
+        const tag = document.createElement('div');
+        tag.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold mr-1.5 mb-1.5 shadow-sm';
+        tag.style.backgroundColor = `${color}20`;
+        tag.style.color = color;
+        tag.style.border = `1px solid ${color}60`;
+        tag.innerHTML = `
+          <span class="w-2 h-2 rounded-full" style="background-color: ${color}"></span>
+          <span>${sn}</span>
+          <button onclick="removeCompareTag(${idx})" class="hover:opacity-75 font-bold ml-1">×</button>
+        `;
+        multiTagsContainer.appendChild(tag);
+      });
+    }
+
+    function removeCompareTag(idx) {
+      compareTags.splice(idx, 1);
+      renderCompareTags();
+    }
+
+    btnAddCompareTag.onclick = () => {
+      const val = inputAddCompareSurname.value.trim();
+      if (val && !compareTags.includes(val)) {
+        compareTags.push(val);
+        inputAddCompareSurname.value = '';
+        renderCompareTags();
+      }
+    };
+
+    inputAddCompareSurname.onkeydown = (e) => {
+      if (e.key === 'Enter') btnAddCompareTag.click();
+    };
+
+    btnRunCompare.onclick = async () => {
+      if (compareTags.length === 0) return;
+      try {
+        const combine = chkCombineSurnames.checked;
+        const res = await fetch(`/api/analysis/multi?surnames=${encodeURIComponent(compareTags.join(','))}&combine=${combine}`);
+        const data = await res.json();
+        
+        document.getElementById('compareEmptyState').classList.add('hidden');
+        document.getElementById('compareResultsSection').classList.remove('hidden');
+
+        // Render Legend
+        const legendContainer = document.getElementById('compareLegend');
+        legendContainer.innerHTML = '';
+        data.groups.forEach(g => {
+          const item = document.createElement('div');
+          item.className = 'p-2 bg-white rounded-lg border border-slate-200 flex items-center justify-between text-xs';
+          item.innerHTML = `
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full shadow-sm" style="background-color: ${g.color}"></span>
+              <strong class="text-slate-800">${g.name}</strong>
+            </div>
+            <span class="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">${g.count} вёсак</span>
+          `;
+          legendContainer.appendChild(item);
+        });
+
+        // Top Districts
+        const distContainer = document.getElementById('compareTopDistricts');
+        distContainer.innerHTML = '';
+        (data.combined_density || []).slice(0, 6).forEach(d => {
+          const row = document.createElement('div');
+          row.className = 'p-1.5 rounded bg-white border border-slate-200 flex items-center justify-between text-[11px]';
+          row.innerHTML = `
+            <div class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full" style="background-color: ${d.color}"></span>
+              <span class="font-semibold text-slate-800">${d.district}</span>
+              <span class="text-slate-400">(${d.count} з ${d.total} вёсак)</span>
+            </div>
+            <span class="font-bold" style="color: ${d.color}">${d.percentage}%</span>
+          `;
+          distContainer.appendChild(row);
+        });
+
+        // Settlements list
+        const stList = document.getElementById('compareSettlementsList');
+        stList.innerHTML = '';
+        data.all_points.slice(0, 100).forEach(st => {
+          const row = document.createElement('div');
+          row.className = 'p-1.5 bg-white border border-slate-200 rounded text-xs flex items-center justify-between hover:bg-slate-50 cursor-pointer';
+          const title = st.name_be !== "не існуе" ? st.name_be : st.name_ru;
+          row.innerHTML = `
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full" style="background-color: ${st.color}"></span>
+              <span class="font-medium text-slate-800">${title}</span>
+              <span class="text-slate-400 text-[10px]">(${st.district} р-н)</span>
+            </div>
+            <span class="text-[10px] text-slate-500 font-semibold">${st.surname}</span>
+          `;
+          row.onclick = () => {
+            window.location.hash = `/settlement/${st.slug || st.id}`;
+          };
+          stList.appendChild(row);
+        });
+
+        // Render on map with colors
+        renderPointsOnMap(data.all_points);
+
+      } catch (err) {
+        console.error("Multi compare error:", err);
+      }
+    };
+
+    // -------------------------------------------------------------
+    // TAB 3: Surname Suffix Explorer & Multi-Suffix Competition Logic
+    // -------------------------------------------------------------
+    const btnSuffixModeSingle = document.getElementById('btnSuffixModeSingle');
+    const btnSuffixModeComp = document.getElementById('btnSuffixModeComp');
+    const suffixSingleContainer = document.getElementById('suffixSingleContainer');
+    const suffixCompContainer = document.getElementById('suffixCompContainer');
+
+    btnSuffixModeSingle.onclick = () => {
+      btnSuffixModeSingle.classList.add('bg-white', 'text-emerald-800', 'shadow-sm');
+      btnSuffixModeSingle.classList.remove('text-slate-600');
+      btnSuffixModeComp.classList.remove('bg-white', 'text-emerald-800', 'shadow-sm');
+      btnSuffixModeComp.classList.add('text-slate-600');
+      suffixSingleContainer.classList.remove('hidden');
+      suffixCompContainer.classList.add('hidden');
+      dominanceLayer.clearLayers();
+      if (map.hasLayer(dominanceLayer)) map.removeLayer(dominanceLayer);
+    };
+
+    btnSuffixModeComp.onclick = () => {
+      btnSuffixModeComp.classList.add('bg-white', 'text-emerald-800', 'shadow-sm');
+      btnSuffixModeComp.classList.remove('text-slate-600');
+      btnSuffixModeSingle.classList.remove('bg-white', 'text-emerald-800', 'shadow-sm');
+      btnSuffixModeSingle.classList.add('text-slate-600');
+      suffixSingleContainer.classList.add('hidden');
+      suffixCompContainer.classList.remove('hidden');
+      renderCompActiveGroups();
+    };
+
+    // 1. Single Mode Handlers
+    document.querySelectorAll('.suffix-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.suffix-btn').forEach(b => {
+          b.classList.remove('bg-emerald-800', 'text-white');
+          b.classList.add('bg-white', 'text-slate-700', 'border', 'border-slate-300');
+        });
+        btn.classList.add('bg-emerald-800', 'text-white');
+        btn.classList.remove('bg-white', 'text-slate-700', 'border');
+        loadSuffixAnalysis(btn.dataset.suffix);
+      });
+    });
+
+    document.getElementById('btnRunCustomSuffix').onclick = () => {
+      const val = document.getElementById('inputCustomSuffix').value.trim();
+      if (val) loadSuffixAnalysis(val);
+    };
+
+    // Toggle expandable suffixes in Single mode
+    const btnToggleMoreSuffixes = document.getElementById('btnToggleMoreSuffixes');
+    const moreSuffixesContainer = document.getElementById('moreSuffixesContainer');
+    const labelToggleMoreSuffixes = document.getElementById('labelToggleMoreSuffixes');
+    const iconToggleMoreSuffixes = document.getElementById('iconToggleMoreSuffixes');
+
+    if (btnToggleMoreSuffixes && moreSuffixesContainer) {
+      btnToggleMoreSuffixes.onclick = () => {
+        const isHidden = moreSuffixesContainer.classList.toggle('hidden');
+        if (isHidden) {
+          labelToggleMoreSuffixes.textContent = 'Яшчэ фіналі (10)';
+          iconToggleMoreSuffixes.classList.remove('ph-caret-up');
+          iconToggleMoreSuffixes.classList.add('ph-caret-down');
+        } else {
+          labelToggleMoreSuffixes.textContent = 'Згарнуць спіс';
+          iconToggleMoreSuffixes.classList.remove('ph-caret-down');
+          iconToggleMoreSuffixes.classList.add('ph-caret-up');
+        }
+      };
+    }
+
+    async function loadSuffixAnalysis(suffix) {
+      try {
+        dominanceLayer.clearLayers();
+        if (map.hasLayer(dominanceLayer)) map.removeLayer(dominanceLayer);
+
+        const res = await fetch(`/api/analysis/suffix?suffix=${encodeURIComponent(suffix)}`);
+        const data = await res.json();
+
+        document.getElementById('suffixStatSurnames').innerText = data.surnames_count.toLocaleString();
+        document.getElementById('suffixStatSettlements').innerText = data.unique_settlements.toLocaleString();
+
+        // Top Surnames Chips
+        const topContainer = document.getElementById('suffixTopSurnames');
+        topContainer.innerHTML = '';
+        (data.top_surnames || []).forEach(sn => {
+          const chip = document.createElement('button');
+          chip.className = 'px-2 py-0.5 bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800 rounded-full border border-slate-200 transition';
+          chip.innerHTML = `${sn.surname_be} <span class="text-[10px] text-emerald-700 font-bold">${sn.freq}</span>`;
+          chip.onclick = () => {
+            window.location.hash = `/surname/${encodeURIComponent(sn.surname_be)}`;
+          };
+          topContainer.appendChild(chip);
+        });
+
+        // District Density
+        const distContainer = document.getElementById('suffixDistrictsList');
+        distContainer.innerHTML = '';
+        (data.districts_density || []).slice(0, 10).forEach(d => {
+          const row = document.createElement('div');
+          row.className = 'p-1.5 rounded bg-white border border-slate-200 flex items-center justify-between text-[11px]';
+          row.innerHTML = `
+            <div class="flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full" style="background-color: ${d.color}"></span>
+              <span class="font-semibold text-slate-800">${d.district}</span>
+              <span class="text-slate-400">(${d.count} з ${d.total_district_settlements} вёсак)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-14 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                <div class="h-1.5 rounded-full" style="width: ${Math.min(100, d.percentage)}%; background-color: ${d.color}"></div>
+              </div>
+              <span class="font-bold w-10 text-right" style="color: ${d.color}">${d.percentage}%</span>
+            </div>
+          `;
+          distContainer.appendChild(row);
+        });
+
+        // Render on map
+        renderPointsOnMap(data.points);
+
+      } catch (err) {
+        console.error("Suffix analysis error:", err);
+      }
+    }
+
+    // 2. Multi-Suffix Competition Mode Handlers
+    let compActiveGroups = ['ёнак,онак', 'ук,юк,чук', 'еня,эня'];
+
+    window.addCompGroup = function(grp) {
+      if (!compActiveGroups.includes(grp) && compActiveGroups.length < 7) {
+        compActiveGroups.push(grp);
+        renderCompActiveGroups();
+      }
+    };
+
+    window.removeCompGroup = function(idx) {
+      compActiveGroups.splice(idx, 1);
+      renderCompActiveGroups();
+    };
+
+    function renderCompActiveGroups() {
+      const container = document.getElementById('compActiveGroupsList');
+      if (!container) return;
+      container.innerHTML = '';
+      if (compActiveGroups.length === 0) {
+        container.innerHTML = '<span class="text-xs text-slate-400 italic">Дадайце хаця б 2 фіналі ніжэй...</span>';
+        return;
+      }
+      compActiveGroups.forEach((grp, idx) => {
+        const color = PALETTE_COLORS[idx % PALETTE_COLORS.length];
+        const tag = document.createElement('div');
+        tag.className = 'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm';
+        tag.style.backgroundColor = `${color}18`;
+        tag.style.color = color;
+        tag.style.border = `1px solid ${color}50`;
+        tag.innerHTML = `
+          <span class="w-2 h-2 rounded-full" style="background-color: ${color}"></span>
+          <span>${grp}</span>
+          <button type="button" onclick="removeCompGroup(${idx})" class="hover:opacity-70 font-bold ml-1">×</button>
+        `;
+        container.appendChild(tag);
+      });
+    }
+
+    document.getElementById('btnAddCompCustom').onclick = () => {
+      const input = document.getElementById('inputCompCustomSuffix');
+      const val = input.value.trim().replace(/^[-%]+/, '');
+      if (val) {
+        addCompGroup(val);
+        input.value = '';
+      }
+    };
+
+    document.getElementById('inputCompCustomSuffix').onkeydown = (e) => {
+      if (e.key === 'Enter') document.getElementById('btnAddCompCustom').click();
+    };
+
+    // Toggle expandable suffixes in Competition mode
+    const btnToggleMoreCompChips = document.getElementById('btnToggleMoreCompChips');
+    const moreCompChipsContainer = document.getElementById('moreCompChipsContainer');
+    const labelToggleMoreCompChips = document.getElementById('labelToggleMoreCompChips');
+    const iconToggleMoreCompChips = document.getElementById('iconToggleMoreCompChips');
+
+    if (btnToggleMoreCompChips && moreCompChipsContainer) {
+      btnToggleMoreCompChips.onclick = () => {
+        const isHidden = moreCompChipsContainer.classList.toggle('hidden');
+        if (isHidden) {
+          labelToggleMoreCompChips.textContent = 'Яшчэ фіналі (10)';
+          iconToggleMoreCompChips.classList.remove('ph-caret-up');
+          iconToggleMoreCompChips.classList.add('ph-caret-down');
+        } else {
+          labelToggleMoreCompChips.textContent = 'Згарнуць спіс';
+          iconToggleMoreCompChips.classList.remove('ph-caret-down');
+          iconToggleMoreCompChips.classList.add('ph-caret-up');
+        }
+      };
+    }
+
+    document.getElementById('btnRunCompetition').onclick = async () => {
+      if (compActiveGroups.length < 2) {
+        alert("Калі ласка, абярыце хаця б 2 фіналі для спаборніцтва!");
+        return;
+      }
+
+      try {
+        const threshold = document.getElementById('selCompMargin').value || "0.10";
+        const querySuffixes = compActiveGroups.join(';');
+        const res = await fetch(`/api/analysis/suffix-competition?suffixes=${encodeURIComponent(querySuffixes)}&margin_threshold=${threshold}`);
+        const data = await res.json();
+
+        document.getElementById('compEmptyState').classList.add('hidden');
+        document.getElementById('compResultsSection').classList.remove('hidden');
+
+        // 1. Render Summary Leaderboard
+        const leaderboardContainer = document.getElementById('compLeaderboard');
+        leaderboardContainer.innerHTML = '';
+        const totalDistrictsCount = data.districts_dominance.length;
+        document.getElementById('compTotalDistrictsCount').innerText = `${totalDistrictsCount} актыўных раёнаў`;
+
+        (data.groups || []).forEach(g => {
+          const wins = data.summary.wins[g.label] || 0;
+          const pct = totalDistrictsCount > 0 ? Math.round(wins * 100 / totalDistrictsCount) : 0;
+          const card = document.createElement('div');
+          card.className = 'p-2.5 rounded-lg border flex flex-col items-center justify-center text-center shadow-sm';
+          card.style.borderColor = `${g.color}50`;
+          card.style.backgroundColor = `${g.color}10`;
+          card.innerHTML = `
+            <div class="text-xl font-black" style="color: ${g.color}">${wins}</div>
+            <div class="text-[11px] font-bold text-slate-800 truncate w-full" title="${g.label}">${g.label}</div>
+            <div class="text-[9px] text-slate-500">${pct}% раёнаў (${g.total_settlements} вёсак)</div>
+          `;
+          leaderboardContainer.appendChild(card);
+        });
+
+        if (data.summary.ties > 0) {
+          const tiePct = totalDistrictsCount > 0 ? Math.round(data.summary.ties * 100 / totalDistrictsCount) : 0;
+          const card = document.createElement('div');
+          card.className = 'p-2.5 rounded-lg border border-slate-300 flex flex-col items-center justify-center text-center shadow-sm';
+          card.style.background = 'repeating-linear-gradient(45deg, rgba(239,68,68,0.08), rgba(239,68,68,0.08) 6px, rgba(59,130,246,0.08) 6px, rgba(59,130,246,0.08) 12px)';
+          card.innerHTML = `
+            <div class="text-xl font-black text-slate-700">${data.summary.ties}</div>
+            <div class="text-[11px] font-bold text-slate-800 flex items-center gap-1">
+              <span>⚔️</span>
+              <span>Нічыя 50/50</span>
+            </div>
+            <div class="text-[9px] text-slate-500">${tiePct}% раёнаў (паласатыя)</div>
+          `;
+          leaderboardContainer.appendChild(card);
+        }
+
+        // 2. Render Districts Dominance List
+        const listContainer = document.getElementById('compDistrictsList');
+        listContainer.innerHTML = '';
+        (data.districts_dominance || []).forEach(d => {
+          const item = document.createElement('div');
+          item.className = 'p-2 bg-white rounded-lg border border-slate-200 hover:border-slate-400 transition cursor-pointer space-y-1';
+          const isTie = d.is_tie;
+          const hasTieColors = isTie && d.tie_colors && d.tie_colors.length >= 2;
+
+          let badgeHtml = '';
+          if (isTie && hasTieColors) {
+            const c1 = d.tie_colors[0];
+            const c2 = d.tie_colors[1];
+            const l1 = (d.tie_labels && d.tie_labels[0]) || '';
+            const l2 = (d.tie_labels && d.tie_labels[1]) || '';
+            badgeHtml = `
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold border border-slate-300 flex items-center gap-1 shadow-sm"
+                    style="background: repeating-linear-gradient(45deg, ${c1}20, ${c1}20 5px, ${c2}20 5px, ${c2}20 10px); color: #1e293b;"
+                    title="${l1} ~ ${l2} (Нічыя 50/50)">
+                <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${c1}"></span>
+                <span>${l1}</span>
+                <span class="text-slate-400 font-normal">~</span>
+                <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${c2}"></span>
+                <span>${l2}</span>
+              </span>
+            `;
+          } else {
+            badgeHtml = `
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold" style="background-color: ${d.dominant_color}20; color: ${d.dominant_color}">
+                ${isTie ? 'Нічыя 50/50' : `${d.dominant_label} (+${d.margin}%)`}
+              </span>
+            `;
+          }
+
+          item.innerHTML = `
+            <div class="flex items-center justify-between text-xs gap-1">
+              <strong class="text-slate-800 shrink-0">${d.district} раён</strong>
+              <div class="truncate text-right">${badgeHtml}</div>
+            </div>
+            <div class="flex items-center justify-between text-[10px] text-slate-500">
+              <span>Згадак: ${d.total_matches} вёсак</span>
+              <span>${isTie ? 'Парытэт 50/50' : `Перавага: ${d.dominance_share}%`}</span>
+            </div>
+          `;
+          item.onclick = () => {
+            if (d.lat && d.lon) {
+              map.setView([d.lat, d.lon], 10);
+            }
+          };
+          listContainer.appendChild(item);
+        });
+
+        // 3. Save competition data & Render on Map (Hexagons or Circles, with points toggle)
+        currentCompData = data;
+        renderCompetitionVis();
+
+      } catch (err) {
+        console.error("Competition error:", err);
+      }
+    };
+
+    // State for competition visualization
+    let currentCompData = null;
+    let currentCompVisMode = 'hex'; // 'hex' | 'circles'
+    let compShowPoints = false; // default false as requested by user!
+
+    const btnCompModeHex = document.getElementById('btnCompModeHex');
+    const btnCompModeCircles = document.getElementById('btnCompModeCircles');
+    const chkCompShowPoints = document.getElementById('chkCompShowPoints');
+
+    function updateVisModeButtons() {
+      if (currentCompVisMode === 'hex') {
+        btnCompModeHex.classList.add('bg-white', 'text-emerald-800', 'shadow-sm');
+        btnCompModeHex.classList.remove('text-slate-600');
+        btnCompModeCircles.classList.remove('bg-white', 'text-emerald-800', 'shadow-sm');
+        btnCompModeCircles.classList.add('text-slate-600');
+      } else {
+        btnCompModeCircles.classList.add('bg-white', 'text-emerald-800', 'shadow-sm');
+        btnCompModeCircles.classList.remove('text-slate-600');
+        btnCompModeHex.classList.remove('bg-white', 'text-emerald-800', 'shadow-sm');
+        btnCompModeHex.classList.add('text-slate-600');
+      }
+    }
+
+    btnCompModeHex.onclick = () => {
+      currentCompVisMode = 'hex';
+      updateVisModeButtons();
+      if (currentCompData) renderCompetitionVis();
+    };
+
+    btnCompModeCircles.onclick = () => {
+      currentCompVisMode = 'circles';
+      updateVisModeButtons();
+      if (currentCompData) renderCompetitionVis();
+    };
+
+    chkCompShowPoints.onchange = () => {
+      compShowPoints = chkCompShowPoints.checked;
+      if (currentCompData) renderCompetitionVis();
+    };
+
+    // Dynamic SVG Pattern generator for 50/50 striped competition circles
+    function getOrCreateStripePattern(colors) {
+      if (!colors || colors.length === 0) return '#94a3b8';
+      if (colors.length === 1) return colors[0];
+
+      const cleanIds = colors.map(c => c.replace(/[^a-zA-Z0-9]/g, '')).join('-');
+      const patternId = `stripe-${cleanIds}`;
+
+      if (!map.hasLayer(dominanceLayer)) {
+        map.addLayer(dominanceLayer);
+      }
+
+      const svg = map.getPanes()?.overlayPane?.querySelector('svg') || document.querySelector('#map svg');
+      if (svg) {
+        let defs = svg.querySelector('defs');
+        if (!defs) {
+          defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+          svg.insertBefore(defs, svg.firstChild);
+        }
+
+        if (!defs.querySelector(`#${patternId}`)) {
+          const stripeW = 8;
+          const totalW = stripeW * colors.length;
+          const pattern = document.createElementNS('http://www.w3.org/2000/svg', 'pattern');
+          pattern.setAttribute('id', patternId);
+          pattern.setAttribute('width', totalW.toString());
+          pattern.setAttribute('height', totalW.toString());
+          pattern.setAttribute('patternUnits', 'userSpaceOnUse');
+          pattern.setAttribute('patternTransform', 'rotate(45 0 0)');
+
+          colors.forEach((col, idx) => {
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.setAttribute('x', (idx * stripeW).toString());
+            rect.setAttribute('y', '0');
+            rect.setAttribute('width', stripeW.toString());
+            rect.setAttribute('height', totalW.toString());
+            rect.setAttribute('fill', col);
+            pattern.appendChild(rect);
+          });
+
+          defs.appendChild(pattern);
+        }
+      }
+
+      return `url(#${patternId})`;
+    }
+
+    // Fast O(1) Hexagonal Binner for continuous Belarus territory tiling
+    function buildHexBins(points, groups, hexRadiusKm = 14.5) {
+      const minLat = 51.15;
+      const maxLat = 56.35;
+      const minLon = 23.05;
+      const maxLon = 32.90;
+
+      const rLat = hexRadiusKm / 111.3;
+      const rLon = hexRadiusKm / (111.3 * Math.cos(53.7 * Math.PI / 180));
+      const colStep = Math.sqrt(3) * rLon;
+      const rowStep = 1.5 * rLat;
+
+      const bins = {};
+
+      points.forEach(p => {
+        if (!p.lat || !p.lon) return;
+        const lat = p.lat;
+        const lon = p.lon;
+        const grpIdx = p.group_idx;
+
+        const approxRow = Math.round((maxLat - lat) / rowStep);
+        let bestDistSq = 1e9;
+        let bestRC = null;
+
+        for (let r = approxRow - 1; r <= approxRow + 1; r++) {
+          const offset = (Math.abs(r) % 2 === 1) ? (colStep / 2.0) : 0.0;
+          const approxCol = Math.round((lon - minLon - offset) / colStep);
+          for (let c = approxCol - 1; c <= approxCol + 1; c++) {
+            const cLat = maxLat - r * rowStep;
+            const cLon = minLon + offset + c * colStep;
+
+            const dLat = (lat - cLat) / rLat;
+            const dLon = (lon - cLon) / rLon;
+            const distSq = dLat * dLat + dLon * dLon;
+            if (distSq < bestDistSq) {
+              bestDistSq = distSq;
+              bestRC = `${r}_${c}`;
+            }
+          }
+        }
+
+        if (bestRC && bestDistSq <= 1.05) {
+          if (!bins[bestRC]) {
+            bins[bestRC] = { r: parseInt(bestRC.split('_')[0]), c: parseInt(bestRC.split('_')[1]), total: 0, counts: {}, settlements: [] };
+          }
+          bins[bestRC].total++;
+          bins[bestRC].counts[grpIdx] = (bins[bestRC].counts[grpIdx] || 0) + 1;
+          bins[bestRC].settlements.push(p);
+        }
+      });
+
+      const hexFeatures = [];
+      Object.values(bins).forEach(b => {
+        if (b.total === 0) return;
+
+        const r = b.r;
+        const c = b.c;
+        const offset = (Math.abs(r) % 2 === 1) ? (colStep / 2.0) : 0.0;
+        const cLat = maxLat - r * rowStep;
+        const cLon = minLon + offset + c * colStep;
+
+        const vertices = [];
+        for (let i = 0; i < 6; i++) {
+          const angleRad = (60 * i + 30) * Math.PI / 180;
+          const vLat = cLat + rLat * Math.sin(angleRad);
+          const vLon = cLon + rLon * Math.cos(angleRad);
+          vertices.push([vLat, vLon]);
+        }
+
+        const ranked = groups.map((g, idx) => ({
+          idx: idx,
+          label: g.label,
+          color: g.color,
+          count: b.counts[idx] || 0
+        })).sort((x, y) => y.count - x.count);
+
+        const top = ranked[0];
+        const second = ranked[1] || { count: 0 };
+        const margin = (top.count - second.count) / b.total;
+        const topShare = top.count / b.total;
+
+        hexFeatures.push({
+          center: [cLat, cLon],
+          vertices: vertices,
+          total: b.total,
+          top: top,
+          second: second,
+          margin: margin,
+          topShare: topShare,
+          ranked: ranked,
+          settlements: b.settlements
+        });
+      });
+
+      return hexFeatures;
+    }
+
+    // Main Renderer for Competition: Handles Hex Tiling, District Circles, and Points Toggle
+    function renderCompetitionVis() {
+      if (!currentCompData) return;
+      const data = currentCompData;
+
+      // 1. Points layer toggle
+      if (compShowPoints) {
+        renderPointsOnMap(data.points, 'dots');
+        if (!map.hasLayer(dotsLayer)) map.addLayer(dotsLayer);
+      } else {
+        dotsLayer.clearLayers();
+        markersCluster.clearLayers();
+        if (map.hasLayer(dotsLayer)) map.removeLayer(dotsLayer);
+        if (map.hasLayer(markersCluster)) map.removeLayer(markersCluster);
+        totalPointsCounter.innerText = (data.points || []).length;
+      }
+
+      // 2. Render Hexagons or Circles
+      if (currentCompVisMode === 'hex') {
+        // Hide district circles
+        dominanceLayer.clearLayers();
+        if (map.hasLayer(dominanceLayer)) map.removeLayer(dominanceLayer);
+
+        hexLayer.clearLayers();
+        const hexFeatures = buildHexBins(data.points, data.groups, 14.5);
+
+        hexFeatures.forEach(h => {
+          const isTie = h.margin < 0.05;
+          const topColor = h.top.color;
+
+          // Opacity rule: 100% margin -> 0.85 opacity, decreasing down to 0% at 50/50 tie
+          const fillOpacity = isTie ? 0.0 : Math.max(0.12, Math.min(0.85, h.margin * 0.85));
+          const strokeColor = isTie ? '#94a3b8' : topColor;
+          const weight = isTie ? 1.5 : 1.0;
+          const dash = isTie ? '3, 3' : null;
+
+          const poly = L.polygon(h.vertices, {
+            fillColor: topColor,
+            fillOpacity: fillOpacity,
+            color: strokeColor,
+            weight: weight,
+            dashArray: dash
+          });
+
+          let breakdownHtml = '';
+          h.ranked.forEach(item => {
+            if (item.count === 0) return;
+            const pct = Math.round(item.count * 100 / h.total);
+            breakdownHtml += `
+              <div class="flex items-center justify-between py-0.5 border-b border-slate-100 text-[11px]">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full" style="background-color: ${item.color}"></span>
+                  <span class="text-slate-700 font-medium">${item.label}:</span>
+                </div>
+                <span class="font-semibold text-slate-800">${item.count} вёсак (${pct}%)</span>
+              </div>
+            `;
+          });
+
+          poly.bindPopup(`
+            <div class="text-xs font-sans min-w-[210px] space-y-1.5 p-0.5">
+              <div class="flex items-center justify-between border-b border-slate-200 pb-1">
+                <strong class="text-slate-800 font-bold">⬡ Плітка (Гексагон)</strong>
+                <span class="text-[10px] text-slate-500 font-semibold">${h.total} паселішчаў</span>
+              </div>
+              <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold" style="background-color: ${h.top.color}20; color: ${h.top.color}">
+                <span class="w-2 h-2 rounded-full" style="background-color: ${h.top.color}"></span>
+                ${isTie ? 'Нічыя 50/50 (Парытэт)' : `${h.top.label} (+${Math.round(h.margin * 100)}%)`}
+              </div>
+              <div class="text-[11px] text-slate-600">
+                ${isTie ? 'Роўная канкурэнцыя (нулявая заліўка)' : `Перавага: <strong>${Math.round(h.topShare * 100)}%</strong> (заліўка: ${Math.round(h.margin * 100)}%)`}
+              </div>
+              <div class="border-t border-slate-100 pt-1 space-y-0.5">
+                ${breakdownHtml}
+              </div>
+            </div>
+          `);
+
+          poly.on('mouseover', function() {
+            this.setStyle({ weight: 2.5, color: '#1e293b' });
+          });
+          poly.on('mouseout', function() {
+            this.setStyle({ weight: weight, color: strokeColor });
+          });
+
+          hexLayer.addLayer(poly);
+        });
+
+        if (!map.hasLayer(hexLayer)) map.addLayer(hexLayer);
+
+      } else {
+        // Mode 'circles': district circles
+        hexLayer.clearLayers();
+        if (map.hasLayer(hexLayer)) map.removeLayer(hexLayer);
+
+        if (!map.hasLayer(dominanceLayer)) map.addLayer(dominanceLayer);
+        dominanceLayer.clearLayers();
+        data.districts_dominance.forEach(d => {
+          if (!d.lat || !d.lon) return;
+          const isTie = d.is_tie;
+          const hasTieColors = isTie && d.tie_colors && d.tie_colors.length >= 2;
+          const color = d.dominant_color;
+
+          let fillColor = color;
+          let fillOpacity = Math.min(0.60, 0.20 + (d.margin / 100) * 0.45);
+          let strokeColor = color;
+          let weight = 2;
+          let dashArray = null;
+
+          if (isTie) {
+            if (hasTieColors) {
+              fillColor = getOrCreateStripePattern(d.tie_colors);
+              fillOpacity = 0.75;
+              strokeColor = '#334155'; // crisp, neutral dark slate border separating the stripes
+              weight = 2;
+              dashArray = null;
+            } else {
+              fillColor = '#94a3b8';
+              fillOpacity = 0.25;
+              strokeColor = '#94a3b8';
+              weight = 1.5;
+              dashArray = '4, 4';
+            }
+          }
+
+          const circle = L.circle([d.lat, d.lon], {
+            radius: 13500,
+            fillColor: fillColor,
+            fillOpacity: fillOpacity,
+            color: strokeColor,
+            weight: weight,
+            dashArray: dashArray
+          });
+
+          let breakdownHtml = '';
+          Object.entries(d.counts || {}).forEach(([label, cnt]) => {
+            const pct = d.total_matches > 0 ? Math.round(cnt * 100 / d.total_matches) : 0;
+            const grp = (data.groups || []).find(g => g.label === label);
+            const grpColor = grp ? grp.color : '#64748b';
+            breakdownHtml += `
+              <div class="flex items-center justify-between py-0.5 border-b border-slate-100 text-[11px]">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full" style="background-color: ${grpColor}"></span>
+                  <span class="text-slate-600">${label}:</span>
+                </div>
+                <span class="font-semibold text-slate-800">${cnt} вёсак (${pct}%)</span>
+              </div>
+            `;
+          });
+
+          let titleBadgeHtml = '';
+          if (isTie && hasTieColors) {
+            const c1 = d.tie_colors[0];
+            const c2 = d.tie_colors[1];
+            const l1 = d.tie_labels[0];
+            const l2 = d.tie_labels[1];
+            titleBadgeHtml = `
+              <div class="p-2 rounded-lg border border-slate-200 bg-slate-50 space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <div class="inline-flex items-center gap-1.5 font-bold text-[11px] text-slate-800">
+                    <span>⚔️</span>
+                    <span>Парытэт (Нічыя 50/50)</span>
+                  </div>
+                  <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">Паласаты круг</span>
+                </div>
+                <div class="flex items-center gap-1.5 flex-wrap pt-0.5">
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold" style="background-color: ${c1}18; color: ${c1}; border: 1px solid ${c1}50">
+                    <span class="w-2 h-2 rounded-full" style="background-color: ${c1}"></span>
+                    ${l1}
+                  </span>
+                  <span class="text-xs font-black text-slate-400">~</span>
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold" style="background-color: ${c2}18; color: ${c2}; border: 1px solid ${c2}50">
+                    <span class="w-2 h-2 rounded-full" style="background-color: ${c2}"></span>
+                    ${l2}
+                  </span>
+                </div>
+              </div>
+            `;
+          } else {
+            titleBadgeHtml = `
+              <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold" style="background-color: ${color}20; color: ${color}">
+                <span class="w-2 h-2 rounded-full" style="background-color: ${color}"></span>
+                ${d.dominant_label}
+              </div>
+            `;
+          }
+
+          let subtitleHtml = '';
+          if (isTie) {
+            subtitleHtml = `
+              <div class="text-[11px] text-slate-600">
+                Роўная канкурэнцыя без перавагі (маржа &lt; ${Math.round((parseFloat(document.getElementById('selCompMargin')?.value) || 0.10) * 100)}%)
+              </div>
+            `;
+          } else {
+            subtitleHtml = `
+              <div class="text-[11px] text-slate-600">
+                Перавага пераможцы: <strong>+${d.margin}%</strong> (доля: <strong>${d.dominance_share}%</strong>)
+              </div>
+            `;
+          }
+
+          circle.bindPopup(`
+            <div class="text-xs font-sans min-w-[210px] space-y-1.5 p-0.5">
+              <div class="font-bold text-sm text-slate-800">${d.district} раён</div>
+              ${titleBadgeHtml}
+              ${subtitleHtml}
+              <div class="text-[10px] text-slate-400">Усяго згадак: ${d.total_matches} з ${d.total_district_settlements} вёсак</div>
+              <div class="border-t border-slate-200 pt-1.5 space-y-0.5">
+                ${breakdownHtml}
+              </div>
+            </div>
+          `);
+
+          circle.on('mouseover', function() {
+            this.setStyle({ weight: 3.5, color: '#0f172a', fillOpacity: 0.95 });
+          });
+          circle.on('mouseout', function() {
+            this.setStyle({ weight: weight, color: strokeColor, fillOpacity: fillOpacity });
+          });
+
+          dominanceLayer.addLayer(circle);
+        });
+
+        if (!map.hasLayer(dominanceLayer)) map.addLayer(dominanceLayer);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // TAB 4: District Density Leaderboard Logic
+    // -------------------------------------------------------------
+    document.getElementById('btnRunDensity').onclick = async () => {
+      const sn = document.getElementById('inputDensitySurname').value.trim();
+      if (!sn) return;
+      try {
+        const res = await fetch(`/api/analysis/density?surnames=${encodeURIComponent(sn)}`);
+        const data = await res.json();
+        
+        const container = document.getElementById('densityLeaderboard');
+        container.innerHTML = '';
+
+        // 1. Clear competition layers if any was open
+        dominanceLayer.clearLayers();
+        if (map.hasLayer(dominanceLayer)) map.removeLayer(dominanceLayer);
+        hexLayer.clearLayers();
+        if (map.hasLayer(hexLayer)) map.removeLayer(hexLayer);
+
+        // 2. Render points and update heat map layer
+        const points = data.points || [];
+        renderPointsOnMap(points, currentMapMode);
+        totalPointsCounter.innerText = points.length;
+
+        // Auto-fit map to found points
+        const validCoords = points.filter(p => p.lat && p.lon).map(p => [p.lat, p.lon]);
+        if (validCoords.length > 0) {
+          map.fitBounds(L.latLngBounds(validCoords), { padding: [30, 30], maxZoom: 12 });
+        }
+
+        if (!data.districts || data.districts.length === 0) {
+          container.innerHTML = '<div class="text-center text-slate-400 py-6">Нічога не знойдзена па запыце.</div>';
+          return;
+        }
+
+        // 3. Render Interactive Accordion Leaderboard
+        data.districts.forEach((d, idx) => {
+          const card = document.createElement('div');
+          card.className = 'rounded-lg bg-white border border-slate-200 overflow-hidden text-xs transition shadow-xs';
+          
+          const header = document.createElement('div');
+          header.className = 'p-2.5 flex items-center justify-between hover:bg-slate-50 transition cursor-pointer select-none';
+          header.innerHTML = `
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-slate-400 w-5 text-center">${idx + 1}</span>
+              <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background-color: ${d.color}"></span>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-bold text-slate-800">${d.district} р-н</span>
+                  <i class="ph ph-caret-down text-slate-400 text-[10px] transition-transform duration-200 chevron-icon"></i>
+                </div>
+                <div class="text-[10px] text-slate-400">${d.count} з ${d.total_district_settlements} вёсак (${d.level_label})</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-16 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                <div class="h-1.5 rounded-full" style="width: ${Math.min(100, d.percentage * 3)}%; background-color: ${d.color}"></div>
+              </div>
+              <span class="font-bold w-10 text-right" style="color: ${d.color}">${d.percentage}%</span>
+            </div>
+          `;
+
+          const body = document.createElement('div');
+          body.className = 'hidden bg-slate-50/70 border-t border-slate-100 p-2 space-y-1';
+          
+          if (d.settlements && d.settlements.length > 0) {
+            d.settlements.forEach(st => {
+              const item = document.createElement('div');
+              item.className = 'flex items-center justify-between p-1.5 rounded bg-white hover:bg-emerald-50 border border-slate-100 hover:border-emerald-300 transition cursor-pointer text-[11px]';
+              const sNames = (st.surnames || []).join(', ');
+              item.innerHTML = `
+                <div class="flex items-center gap-1.5 truncate">
+                  <i class="ph ph-map-pin text-emerald-700 text-xs shrink-0"></i>
+                  <span class="font-semibold text-slate-800 truncate">${st.name_be}</span>
+                  <span class="text-[10px] text-slate-400 shrink-0">(${st.settlement_type || 'вёска'})</span>
+                </div>
+                <div class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded shrink-0" title="${sNames}">
+                  ${sNames}
+                </div>
+              `;
+              item.onclick = (e) => {
+                e.stopPropagation();
+                if (st.lat && st.lon) {
+                  map.setView([st.lat, st.lon], 13);
+                  const popupContent = `
+                    <div class="text-xs p-1 space-y-1">
+                      <strong class="text-sm font-bold text-slate-800">${st.name_be}</strong>
+                      <div class="text-slate-500">${st.settlement_type || 'вёска'}, ${st.district} р-н</div>
+                      <div class="text-emerald-700 font-semibold pt-1 border-t border-slate-200">
+                        Прозвішчы: ${sNames}
+                      </div>
+                      ${st.slug ? `<button onclick="loadSettlement('${st.slug}')" class="mt-1 w-full text-center text-[10px] bg-emerald-800 text-white py-1 px-2 rounded font-medium">Адкрыць картку паселішча</button>` : ''}
+                    </div>
+                  `;
+                  L.popup().setLatLng([st.lat, st.lon]).setContent(popupContent).openOn(map);
+                }
+              };
+              body.appendChild(item);
+            });
+          } else {
+            body.innerHTML = '<div class="text-[10px] text-slate-400 italic p-1">Няма звестак пра вёскі</div>';
+          }
+
+          // Header click toggles accordion & frames district
+          header.onclick = () => {
+            const isHidden = body.classList.contains('hidden');
+            body.classList.toggle('hidden');
+            const chevron = header.querySelector('.chevron-icon');
+            if (chevron) {
+              chevron.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
+            }
+            if (isHidden && d.settlements && d.settlements.length > 0) {
+              const coords = d.settlements.filter(s => s.lat && s.lon).map(s => [s.lat, s.lon]);
+              if (coords.length > 0) {
+                map.fitBounds(L.latLngBounds(coords), { padding: [40, 40], maxZoom: 12 });
+              }
+            }
+          };
+
+          card.appendChild(header);
+          card.appendChild(body);
+          container.appendChild(card);
+        });
+
+      } catch (err) {
+        console.error("Density error:", err);
+      }
+    };
+
+    document.getElementById('inputDensitySurname').onkeydown = (e) => {
+      if (e.key === 'Enter') document.getElementById('btnRunDensity').click();
+    };
+
+    // -------------------------------------------------------------
+    // Routing & Modal Logic
+    // -------------------------------------------------------------
+    function handleRoute() {
+      const hash = window.location.hash;
+      if (hash.startsWith('#/settlement/')) {
+        const id = hash.replace('#/settlement/', '');
+        loadSettlement(decodeURIComponent(id));
+      } else if (hash.startsWith('#/surname/')) {
+        const id = hash.replace('#/surname/', '');
+        loadSurname(decodeURIComponent(id));
+      } else if (hash.startsWith('#/parish/')) {
+        const parish = hash.replace('#/parish/', '');
+        filterByParish(decodeURIComponent(parish));
+      } else if (hash.startsWith('#/estate/')) {
+        const estate = hash.replace('#/estate/', '');
+        filterByEstate(decodeURIComponent(estate));
+      }
+    }
+
+    window.addEventListener('hashchange', handleRoute);
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.location.hash) {
+        handleRoute();
+      }
+    });
+
+    // Compare Modal
+    const compareModal = document.getElementById('compareModal');
+    const btnOpenCompareModal = document.getElementById('btnOpenCompareModal');
+    const btnCloseCompareModal = document.getElementById('btnCloseCompareModal');
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('fileInput');
+
+    btnOpenCompareModal.onclick = () => compareModal.classList.remove('hidden');
+    btnCloseCompareModal.onclick = () => compareModal.classList.add('hidden');
+    dropzone.onclick = () => fileInput.click();
+
+    fileInput.onchange = (e) => {
+      if (e.target.files.length > 0) uploadCompareFile(e.target.files[0]);
+    };
+
+    dropzone.ondragover = (e) => { e.preventDefault(); dropzone.classList.add('border-emerald-600', 'bg-emerald-50'); };
+    dropzone.ondragleave = () => { dropzone.classList.remove('border-emerald-600', 'bg-emerald-50'); };
+    dropzone.ondrop = (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('border-emerald-600', 'bg-emerald-50');
+      if (e.dataTransfer.files.length > 0) uploadCompareFile(e.dataTransfer.files[0]);
+    };
+
+    async function uploadCompareFile(file) {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await fetch('/api/compare', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        renderCompareResults(data);
+      } catch (err) {
+        alert("Памылка апрацоўкі файла: " + err);
+      }
+    }
+
+    function renderCompareResults(data) {
+      const resultsBlock = document.getElementById('compareResults');
+      resultsBlock.classList.remove('hidden');
+      document.getElementById('matchedCount').innerText = `${data.matched_surnames_count} з ${data.uploaded_surnames_count}`;
+
+      const clusterList = document.getElementById('clusterList');
+      clusterList.innerHTML = '';
+
+      (data.clusters || []).forEach(cl => {
+        const row = document.createElement('div');
+        row.className = 'p-2 bg-emerald-50 border border-emerald-200 rounded-lg cursor-pointer text-xs space-y-0.5 hover:bg-emerald-100 transition';
+        row.innerHTML = `
+          <div class="flex items-center justify-between font-bold text-slate-800">
+            <span>${cl.name_be} (${cl.district} р-н)</span>
+            <span class="bg-emerald-700 text-white text-[10px] px-2 py-0.5 rounded-full font-semibold">${cl.matched_surnames.length} прозвішчы</span>
+          </div>
+          <div class="text-[11px] text-emerald-900 font-medium">Супадзенні: ${cl.matched_surnames.join(', ')}</div>
+        `;
+        row.onclick = () => {
+          compareModal.classList.add('hidden');
+          window.location.hash = `/settlement/${cl.settlement_id}`;
+        };
+        clusterList.appendChild(row);
+      });
+
+      renderPointsOnMap(data.clusters || []);
+    }
+  </script>
+</body>
+</html>
