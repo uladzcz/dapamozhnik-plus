@@ -52,6 +52,9 @@
     .leaflet-control-layers-base label:hover {
       color: #065f46 !important;
     }
+    .osm-tile-light {
+      filter: brightness(1.08) contrast(0.90) saturate(0.60);
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans h-screen flex flex-col overflow-hidden">
@@ -484,7 +487,7 @@
         <div id="suffixCompContainer" class="hidden flex-1 flex flex-col overflow-hidden">
           <div class="p-3.5 border-b border-slate-200 bg-white shrink-0 space-y-2.5">
             <p class="text-[11px] text-slate-500">
-              Выберыце 2–6 фіналяў для вызначэння дамінуючых арэалаў па 118 раёнах (з пазначэннем зон 50/50):
+              Выберыце 2 або больш фіналяў для вызначэння дамінуючых арэалаў па 118 раёнах (з пазначэннем зон 50/50):
             </p>
 
             <!-- Active Competing Groups List -->
@@ -726,7 +729,14 @@
     // Base Maps (OpenStreetMap + Historical Maps from orda.of.by)
     const osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+      className: 'osm-tile-light',
       maxZoom: 19
+    });
+
+    const cartoLightLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 20
     });
 
     const schubert3vLayer = L.tileLayer('https://host2517117152.of.by/.tiles/3v_jun20/Z{z}/{y}/{x}.jpg', {
@@ -759,11 +769,12 @@
       maxZoom: 13
     });
 
-    // Default to OpenStreetMap
+    // Default to OpenStreetMap (Lightened)
     osmLayer.addTo(map);
 
     const baseMaps = {
-      "🗺️ OpenStreetMap (Сучасная)": osmLayer,
+      "🗺️ OpenStreetMap (Светлая)": osmLayer,
+      "⚪ CartoDB Светлая (для аналітыкі)": cartoLightLayer,
       "📜 3-верстка (Шуберт XIX ст.)": schubert3vLayer,
       "🎖️ 1-верстка (пач. XX ст.)": oneVerstLayer,
       "⚔️ РККА 500м (1930–40-я)": rkkaLayer,
@@ -1432,12 +1443,24 @@
     const btnRunCompare = document.getElementById('btnRunCompare');
     const chkCombineSurnames = document.getElementById('chkCombineSurnames');
 
-    const PALETTE_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+    const PALETTE_COLORS = [
+      '#2563eb', '#ea580c', '#16a34a', '#dc2626', '#9333ea',
+      '#0891b2', '#db2777', '#d97706', '#4f46e5', '#059669',
+      '#991b1b', '#65a30d', '#7c3aed', '#06b6d4', '#c026d3',
+      '#854d0e', '#475569', '#0284c7', '#4d7c0f', '#e11d48',
+      '#581c87', '#155e75', '#ca8a04', '#14532d', '#f43f5e'
+    ];
+
+    function getPaletteColor(idx) {
+      if (idx < PALETTE_COLORS.length) return PALETTE_COLORS[idx];
+      const hue = (idx * 137.508) % 360;
+      return `hsl(${hue}, 75%, 45%)`;
+    }
 
     function renderCompareTags() {
       multiTagsContainer.innerHTML = '';
       compareTags.forEach((sn, idx) => {
-        const color = PALETTE_COLORS[idx % PALETTE_COLORS.length];
+        const color = getPaletteColor(idx);
         const tag = document.createElement('div');
         tag.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold mr-1.5 mb-1.5 shadow-sm';
         tag.style.backgroundColor = `${color}20`;
@@ -1702,7 +1725,7 @@
     let compActiveGroups = ['ёнак,онак', 'ук,юк,чук', 'еня,эня'];
 
     window.addCompGroup = function(grp) {
-      if (!compActiveGroups.includes(grp) && compActiveGroups.length < 7) {
+      if (!compActiveGroups.includes(grp)) {
         compActiveGroups.push(grp);
         renderCompActiveGroups();
       }
@@ -1722,7 +1745,7 @@
         return;
       }
       compActiveGroups.forEach((grp, idx) => {
-        const color = PALETTE_COLORS[idx % PALETTE_COLORS.length];
+        const color = getPaletteColor(idx);
         const tag = document.createElement('div');
         tag.className = 'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold shadow-sm';
         tag.style.backgroundColor = `${color}18`;

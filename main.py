@@ -128,14 +128,41 @@ def to_ascii_filename(text: str) -> str:
     return s or "export"
 
 PALETTE = [
-    {"name": "Чырвоны", "hex": "#ef4444", "light": "#fee2e2"},
-    {"name": "Сіні", "hex": "#3b82f6", "light": "#dbeafe"},
-    {"name": "Зялёны", "hex": "#10b981", "light": "#d1fae5"},
-    {"name": "Бурштынавы", "hex": "#f59e0b", "light": "#fef3c7"},
-    {"name": "Фіялетавы", "hex": "#8b5cf6", "light": "#ede9fe"},
-    {"name": "Ружовы", "hex": "#ec4899", "light": "#fce7f3"},
-    {"name": "Бірузовы", "hex": "#06b6d4", "light": "#cffafe"},
+    {"name": "Сіні", "hex": "#2563eb", "light": "#dbeafe"},
+    {"name": "Памаранчавы", "hex": "#ea580c", "light": "#ffedd5"},
+    {"name": "Зялёны", "hex": "#16a34a", "light": "#dcfce7"},
+    {"name": "Чырвоны", "hex": "#dc2626", "light": "#fee2e2"},
+    {"name": "Фіялетавы", "hex": "#9333ea", "light": "#f3e8ff"},
+    {"name": "Бірузовы", "hex": "#0891b2", "light": "#cffafe"},
+    {"name": "Ружовы", "hex": "#db2777", "light": "#fce7f3"},
+    {"name": "Бурштынавы", "hex": "#d97706", "light": "#fef3c7"},
+    {"name": "Індыга", "hex": "#4f46e5", "light": "#e0e7ff"},
+    {"name": "Смарагдавы", "hex": "#059669", "light": "#d1fae5"},
+    {"name": "Цёмна-чырвоны", "hex": "#991b1b", "light": "#fee2e2"},
+    {"name": "Лаймавы", "hex": "#65a30d", "light": "#ecfccb"},
+    {"name": "Віялетавы", "hex": "#7c3aed", "light": "#ede9fe"},
+    {"name": "Цыянавы", "hex": "#06b6d4", "light": "#cffafe"},
+    {"name": "Фуксія", "hex": "#c026d3", "light": "#fae8ff"},
+    {"name": "Карычневы", "hex": "#854d0e", "light": "#fef9c3"},
+    {"name": "Шэра-блакітны", "hex": "#475569", "light": "#f1f5f9"},
+    {"name": "Блакітны", "hex": "#0284c7", "light": "#e0f2fe"},
+    {"name": "Аліўкавы", "hex": "#4d7c0f", "light": "#ecfccb"},
+    {"name": "Малінавы", "hex": "#e11d48", "light": "#ffe4e6"},
+    {"name": "Цёмна-фіялетавы", "hex": "#581c87", "light": "#f3e8ff"},
+    {"name": "Цёмна-бірузовы", "hex": "#155e75", "light": "#cffafe"},
+    {"name": "Залацісты", "hex": "#ca8a04", "light": "#fef9c3"},
+    {"name": "Цёмна-зялёны", "hex": "#14532d", "light": "#dcfce7"},
+    {"name": "Каралавы", "hex": "#f43f5e", "light": "#ffe4e6"}
 ]
+
+def get_group_color(idx: int) -> dict:
+    if idx < len(PALETTE):
+        return PALETTE[idx]
+    import colorsys
+    hue = (idx * 0.618033988749895) % 1.0
+    r, g, b = colorsys.hsv_to_rgb(hue, 0.75, 0.85)
+    hex_col = f"#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}"
+    return {"name": f"Колер {idx+1}", "hex": hex_col, "light": "#f8fafc"}
 
 def classify_density(pct: float) -> dict:
     if pct >= 15.0:
@@ -778,62 +805,93 @@ def compare_suffix_competition(
 
     st_to_hex, hex_coords = get_hex_grid()
     from collections import defaultdict
+
+    # 1. Parse suffix patterns for all groups
+    patterns = []
+    for g_idx, raw_grp in enumerate(groups_raw):
+        parts = [p.strip().lstrip("-").lstrip("%").lower() for p in raw_grp.split(",") if p.strip()]
+        for p in parts:
+            patterns.append((p, len(p), g_idx))
+
+    # Sort patterns by length descending: longest, most specific suffix takes precedence!
+    patterns.sort(key=lambda x: x[1], reverse=True)
+
+    # 2. Fetch all surnames and map each surname exclusively to its best matching group
+    cur.execute("SELECT id, surname_be FROM surnames")
+    all_surnames = cur.fetchall()
+
+    surname_to_group = {}
+    for sn_id, sn_be in all_surnames:
+        if not sn_be:
+            continue
+        sn_norm = sn_be.lower().replace("’", "'").replace("ʼ", "'")
+        for suf, suf_len, g_idx in patterns:
+            if sn_norm.endswith(suf):
+                surname_to_group[sn_id] = g_idx
+                break  # Longest matching suffix wins exclusively!
+
+    if not surname_to_group:
+        conn.close()
+        return {"groups": [], "districts_dominance": [], "hex_features": [], "points": []}
+
+    # 3. Query distinct settlements for all classified surnames using a temporary table
+    cur.execute("CREATE TEMP TABLE temp_sn_group (surname_id INTEGER PRIMARY KEY, group_idx INTEGER)")
+    cur.executemany("INSERT INTO temp_sn_group VALUES (?, ?)", surname_to_group.items())
+
+    cur.execute("""
+        SELECT DISTINCT ss.settlement_id, tg.group_idx, st.district, st.lat, st.lon, st.name_be, sn.surname_be
+        FROM temp_sn_group tg
+        JOIN settlement_surnames ss ON tg.surname_id = ss.surname_id
+        JOIN settlements st ON ss.settlement_id = st.id
+        JOIN surnames sn ON tg.surname_id = sn.id
+        WHERE st.lat IS NOT NULL
+    """)
+    st_group_rows = cur.fetchall()
+    cur.execute("DROP TABLE temp_sn_group")
+    conn.close()
+
+    # 4. Bin into hex cells, district counts, and build points sample
     hex_counts = defaultdict(lambda: defaultdict(int))
-    group_district_settlements = []
-    groups = []
+    group_district_settlements = [defaultdict(int) for _ in range(len(groups_raw))]
+    group_total_settlements = [0 for _ in range(len(groups_raw))]
+    seen_st_per_group = [set() for _ in range(len(groups_raw))]
     all_points = []
+    points_count_per_group = defaultdict(int)
 
-    for idx, raw_grp in enumerate(groups_raw[:7]):
-        color_info = PALETTE[idx % len(PALETTE)]
-        parts = [p.strip().lstrip("-").lstrip("%") for p in raw_grp.split(",") if p.strip()]
-        conds = ["sn.surname_be LIKE ?" for _ in parts]
-        pats = [f"%{p}" for p in parts]
-
-        # 100% of distinct matching settlements across Belarus
-        cur.execute(f"""
-            SELECT DISTINCT st.id, st.district
-            FROM settlements st
-            JOIN settlement_surnames ss ON st.id = ss.settlement_id
-            JOIN surnames sn ON ss.surname_id = sn.id
-            WHERE ({" OR ".join(conds)}) AND st.lat IS NOT NULL
-        """, pats)
-        st_rows = cur.fetchall()
-
-        st_by_dist = defaultdict(int)
-        for sid, dist in st_rows:
+    for sid, g_idx, dist, lat, lon, name_be, sn_be in st_group_rows:
+        if sid not in seen_st_per_group[g_idx]:
+            seen_st_per_group[g_idx].add(sid)
             if dist:
-                st_by_dist[dist] += 1
+                group_district_settlements[g_idx][dist] += 1
             if sid in st_to_hex:
-                hex_counts[st_to_hex[sid]][idx] += 1
+                hex_counts[st_to_hex[sid]][g_idx] += 1
+            group_total_settlements[g_idx] += 1
 
-        group_district_settlements.append(st_by_dist)
+            if points_count_per_group[g_idx] < 500:
+                points_count_per_group[g_idx] += 1
+                color_info = get_group_color(g_idx)
+                all_points.append({
+                    "id": sid,
+                    "name_be": name_be,
+                    "district": dist,
+                    "lat": lat,
+                    "lon": lon,
+                    "surname": sn_be,
+                    "group_idx": g_idx,
+                    "group_label": groups_raw[g_idx],
+                    "color": color_info["hex"]
+                })
 
-        # Sample points for optional map dots toggle (up to 500 per group)
-        cur.execute(f"""
-            SELECT DISTINCT st.id, st.slug, st.name_be, st.name_ru, st.settlement_type, st.district, st.lat, st.lon, sn.surname_be
-            FROM settlements st
-            JOIN settlement_surnames ss ON st.id = ss.settlement_id
-            JOIN surnames sn ON ss.surname_id = sn.id
-            WHERE ({" OR ".join(conds)}) AND st.lat IS NOT NULL
-            LIMIT 500
-        """, pats)
-        for r in cur.fetchall():
-            pt = dict(r)
-            pt["color"] = color_info["hex"]
-            pt["group_idx"] = idx
-            pt["group_label"] = raw_grp
-            pt["surname"] = pt["surname_be"]
-            all_points.append(pt)
-
+    groups = []
+    for idx, raw_grp in enumerate(groups_raw):
+        color_info = get_group_color(idx)
         groups.append({
             "group_idx": idx,
             "label": raw_grp,
             "color": color_info["hex"],
             "color_name": color_info["name"],
-            "total_settlements": len(st_rows)
+            "total_settlements": group_total_settlements[idx]
         })
-
-    conn.close()
 
     # Calculate dominance for each of the 118 districts
     districts_dominance = []
