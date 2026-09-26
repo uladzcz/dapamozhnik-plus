@@ -652,7 +652,7 @@
       <div id="map"></div>
 
       <!-- Map Layer Switcher (Clusters, Dots, Heatmap) positioned next to zoom buttons -->
-      <div class="absolute top-2.5 left-[54px] z-[400] bg-white/95 backdrop-blur shadow-md border border-slate-200 rounded-lg p-1 flex items-center gap-1 text-xs font-medium">
+      <div id="mapModeBar" class="absolute top-2.5 left-[54px] z-[400] bg-white/95 backdrop-blur shadow-md border border-slate-200 rounded-lg p-1 flex items-center gap-1 text-xs font-medium">
         <button id="btnLayerClusters" class="layer-btn active flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-emerald-800 text-white shadow-sm transition">
           <i class="ph ph-circles-three text-sm"></i> <span>Кластары</span>
         </button>
@@ -848,6 +848,12 @@
         loadSuffixAnalysis('віч,іч,ыч');
       }
       if (target === 'density') panelDensity.classList.remove('hidden');
+
+      if (target === 'suffix' && !suffixCompContainer.classList.contains('hidden')) {
+        document.getElementById('mapModeBar')?.classList.add('hidden');
+      } else {
+        document.getElementById('mapModeBar')?.classList.remove('hidden');
+      }
     }
 
     tabBtns.search.onclick = () => switchTab('search');
@@ -1551,8 +1557,11 @@
       btnSuffixModeComp.classList.add('text-slate-600');
       suffixSingleContainer.classList.remove('hidden');
       suffixCompContainer.classList.add('hidden');
+      document.getElementById('mapModeBar')?.classList.remove('hidden');
       dominanceLayer.clearLayers();
+      hexLayer.clearLayers();
       if (map.hasLayer(dominanceLayer)) map.removeLayer(dominanceLayer);
+      if (map.hasLayer(hexLayer)) map.removeLayer(hexLayer);
     };
 
     btnSuffixModeComp.onclick = () => {
@@ -1562,6 +1571,10 @@
       btnSuffixModeSingle.classList.add('text-slate-600');
       suffixSingleContainer.classList.add('hidden');
       suffixCompContainer.classList.remove('hidden');
+      document.getElementById('mapModeBar')?.classList.add('hidden');
+      if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+      if (map.hasLayer(markersCluster)) map.removeLayer(markersCluster);
+      if (map.hasLayer(dotsLayer)) map.removeLayer(dotsLayer);
       renderCompActiveGroups();
     };
 
@@ -2094,6 +2107,7 @@
       } else {
         dotsLayer.clearLayers();
         markersCluster.clearLayers();
+        if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
         if (map.hasLayer(dotsLayer)) map.removeLayer(dotsLayer);
         if (map.hasLayer(markersCluster)) map.removeLayer(markersCluster);
         totalPointsCounter.innerText = (data.points || []).length;
@@ -2106,7 +2120,9 @@
         if (map.hasLayer(dominanceLayer)) map.removeLayer(dominanceLayer);
 
         hexLayer.clearLayers();
-        const hexFeatures = buildHexBins(data.points, data.groups, 14.5);
+        const hexFeatures = (data.hex_features && data.hex_features.length > 0)
+          ? data.hex_features
+          : buildHexBins(data.points, data.groups, 14.5);
 
         hexFeatures.forEach(h => {
           const isTie = h.margin < 0.05;

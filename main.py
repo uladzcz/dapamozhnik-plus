@@ -38,6 +38,70 @@ app.add_middleware(
 # Cache for total historical settlements per district
 _DISTRICT_TOTALS = None
 
+_DISTRICT_TOTALS = None
+_SETTLEMENT_HEX_MAP = None
+_HEX_COORDINATES = None
+
+def get_hex_grid():
+    global _SETTLEMENT_HEX_MAP, _HEX_COORDINATES
+    if _SETTLEMENT_HEX_MAP is not None and _HEX_COORDINATES is not None:
+        return _SETTLEMENT_HEX_MAP, _HEX_COORDINATES
+
+    import math
+    minLat, maxLat = 51.15, 56.35
+    minLon, maxLon = 23.05, 32.90
+    hexRadiusKm = 14.5
+
+    rLat = hexRadiusKm / 111.3
+    rLon = hexRadiusKm / (111.3 * math.cos(53.7 * math.pi / 180))
+    colStep = math.sqrt(3) * rLon
+    rowStep = 1.5 * rLat
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, lat, lon FROM settlements WHERE lat IS NOT NULL AND lon IS NOT NULL")
+    settlements = cur.fetchall()
+    conn.close()
+
+    st_to_hex = {}
+    hex_coords = {}
+
+    for sid, lat, lon in settlements:
+        approxRow = round((maxLat - lat) / rowStep)
+        bestDistSq = 1e9
+        bestRC = None
+        for r in range(approxRow - 1, approxRow + 2):
+            offset = (colStep / 2.0) if (abs(r) % 2 == 1) else 0.0
+            approxCol = round((lon - minLon - offset) / colStep)
+            for c in range(approxCol - 1, approxCol + 2):
+                cLat = maxLat - r * rowStep
+                cLon = minLon + offset + c * colStep
+                distSq = ((lat - cLat) / rLat) ** 2 + ((lon - cLon) / rLon) ** 2
+                if distSq < bestDistSq:
+                    bestDistSq = distSq
+                    bestRC = (r, c)
+        if bestRC and bestDistSq <= 1.05:
+            st_to_hex[sid] = bestRC
+            if bestRC not in hex_coords:
+                r, c = bestRC
+                offset = (colStep / 2.0) if (abs(r) % 2 == 1) else 0.0
+                cLat = maxLat - r * rowStep
+                cLon = minLon + offset + c * colStep
+                vertices = []
+                for i in range(6):
+                    angleRad = (60 * i + 30) * math.pi / 180
+                    vLat = cLat + rLat * math.sin(angleRad)
+                    vLon = cLon + rLon * math.cos(angleRad)
+                    vertices.append([round(vLat, 6), round(vLon, 6)])
+                hex_coords[bestRC] = {
+                    "center": [round(cLat, 6), round(cLon, 6)],
+                    "vertices": vertices
+                }
+
+    _SETTLEMENT_HEX_MAP = st_to_hex
+    _HEX_COORDINATES = hex_coords
+    return _SETTLEMENT_HEX_MAP, _HEX_COORDINATES
+
 def get_district_totals() -> dict:
     global _DISTRICT_TOTALS
     if _DISTRICT_TOTALS is None:
@@ -712,8 +776,11 @@ def compare_suffix_competition(
         conn.close()
         return {"groups": [], "districts_dominance": [], "points": []}
 
-    groups = []
+    st_to_hex, hex_coords = get_hex_grid()
+    from collections import defaultdict
+    hex_counts = defaultdict(lambda: defaultdict(int))
     group_district_settlements = []
+    groups = []
     all_points = []
 
     for idx, raw_grp in enumerate(groups_raw[:7]):
@@ -722,26 +789,33 @@ def compare_suffix_competition(
         conds = ["sn.surname_be LIKE ?" for _ in parts]
         pats = [f"%{p}" for p in parts]
 
-        # Fast distinct settlements count per district
+        # 100% of distinct matching settlements across Belarus
         cur.execute(f"""
-            SELECT st.district, COUNT(DISTINCT st.id) as cnt
+            SELECT DISTINCT st.id, st.district
             FROM settlements st
             JOIN settlement_surnames ss ON st.id = ss.settlement_id
             JOIN surnames sn ON ss.surname_id = sn.id
-            WHERE ({" OR ".join(conds)}) AND st.district != ''
-            GROUP BY st.district
+            WHERE ({" OR ".join(conds)}) AND st.lat IS NOT NULL
         """, pats)
-        dist_counts = dict(cur.fetchall())
-        group_district_settlements.append(dist_counts)
+        st_rows = cur.fetchall()
 
-        # Fast sample points for hex binning and map dots (up to 1000 per group)
+        st_by_dist = defaultdict(int)
+        for sid, dist in st_rows:
+            if dist:
+                st_by_dist[dist] += 1
+            if sid in st_to_hex:
+                hex_counts[st_to_hex[sid]][idx] += 1
+
+        group_district_settlements.append(st_by_dist)
+
+        # Sample points for optional map dots toggle (up to 500 per group)
         cur.execute(f"""
             SELECT DISTINCT st.id, st.slug, st.name_be, st.name_ru, st.settlement_type, st.district, st.lat, st.lon, sn.surname_be
             FROM settlements st
             JOIN settlement_surnames ss ON st.id = ss.settlement_id
             JOIN surnames sn ON ss.surname_id = sn.id
             WHERE ({" OR ".join(conds)}) AND st.lat IS NOT NULL
-            LIMIT 1000
+            LIMIT 500
         """, pats)
         for r in cur.fetchall():
             pt = dict(r)
@@ -756,7 +830,7 @@ def compare_suffix_competition(
             "label": raw_grp,
             "color": color_info["hex"],
             "color_name": color_info["name"],
-            "total_settlements": sum(dist_counts.values())
+            "total_settlements": len(st_rows)
         })
 
     conn.close()
@@ -813,6 +887,47 @@ def compare_suffix_competition(
 
     districts_dominance.sort(key=lambda x: (x["margin"], x["total_matches"]), reverse=True)
 
+    # Calculate 100% accurate hex features across all Belarus territory
+    hex_features = []
+    for rc, counts_by_grp in hex_counts.items():
+        total = sum(counts_by_grp.values())
+        if total == 0:
+            continue
+        coords = hex_coords.get(rc)
+        if not coords:
+            continue
+
+        ranked = sorted(
+            [
+                {
+                    "idx": i,
+                    "label": groups[i]["label"],
+                    "color": groups[i]["color"],
+                    "count": counts_by_grp.get(i, 0)
+                }
+                for i in range(len(groups))
+            ],
+            key=lambda x: x["count"],
+            reverse=True
+        )
+
+        top = ranked[0]
+        second = ranked[1] if len(ranked) > 1 else {"count": 0, "label": "", "color": ""}
+        margin = round((top["count"] - second["count"]) / total, 3)
+        top_share = round(top["count"] / total, 3)
+
+        hex_features.append({
+            "rc": f"{rc[0]}_{rc[1]}",
+            "center": coords["center"],
+            "vertices": coords["vertices"],
+            "total": total,
+            "top": top,
+            "second": second,
+            "margin": margin,
+            "topShare": top_share,
+            "ranked": ranked
+        })
+
     return {
         "groups": groups,
         "summary": {
@@ -821,6 +936,7 @@ def compare_suffix_competition(
             "total_districts": len(districts_dominance)
         },
         "districts_dominance": districts_dominance,
+        "hex_features": hex_features,
         "points": all_points
     }
 
