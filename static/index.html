@@ -53,7 +53,7 @@
       color: #065f46 !important;
     }
     .osm-tile-light {
-      filter: brightness(1.08) contrast(0.90) saturate(0.60);
+      filter: brightness(1.12) contrast(0.85) saturate(0.45);
     }
   </style>
 </head>
@@ -750,10 +750,9 @@
       maxZoom: 19
     });
 
-    const cartoLightLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20
+    const esriLightLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ',
+      maxZoom: 16
     });
 
     const schubert3vLayer = L.tileLayer('https://host2517117152.of.by/.tiles/3v_jun20/Z{z}/{y}/{x}.jpg', {
@@ -791,7 +790,7 @@
 
     const baseMaps = {
       "OpenStreetMap (Светлая)": osmLayer,
-      "CartoDB Светлая (для аналітыкі)": cartoLightLayer,
+      "Светлая шэрая (для аналітыкі)": esriLightLayer,
       "3-верстка (Шуберт XIX ст.)": schubert3vLayer,
       "1-верстка (пач. XX ст.)": oneVerstLayer,
       "РККА 500м (1930–40-я)": rkkaLayer,
@@ -1233,12 +1232,20 @@
           const el = document.createElement('div');
           el.className = 'p-2.5 bg-slate-50 hover:bg-emerald-50 rounded-lg cursor-pointer border border-slate-200 transition text-xs space-y-0.5';
           const title = st.name_be && st.name_be !== "не існуе" ? st.name_be : st.name_ru;
-          const subtitle = st.name_be === "не існуе" ? '<span class="text-amber-700 font-medium">(не існуе)</span>' : (st.name_ru ? `рус. ${st.name_ru}` : '');
+          let subtitleHtml = '';
+          if (st.name_be === "не існуе") {
+            subtitleHtml = '<span class="text-amber-700 font-medium ml-1.5">(не існуе)</span>';
+          } else if (st.name_ru) {
+            subtitleHtml = `<span class="text-slate-400 font-normal ml-1.5">рус. ${st.name_ru}</span>`;
+          }
           
           el.innerHTML = `
             <div class="flex items-center justify-between">
-              <span class="font-bold text-slate-800">${title} ${subtitle}</span>
-              <span class="text-[10px] text-slate-500 uppercase">${st.settlement_type || 'вёска'}</span>
+              <div class="truncate">
+                <span class="font-bold text-slate-800">${title}</span>
+                ${subtitleHtml}
+              </div>
+              <span class="text-[10px] text-slate-500 uppercase ml-2 shrink-0">${st.settlement_type || 'вёска'}</span>
             </div>
             <div class="text-[11px] text-slate-500">${st.district} р-н • ${st.volost || ''} вол.</div>
           `;
