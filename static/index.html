@@ -415,13 +415,27 @@
           </div>
 
           <!-- Sub-mode Toggle: Single vs Competition -->
-          <div class="flex items-center gap-1 bg-slate-200/80 p-0.5 rounded-lg text-xs font-semibold">
-            <button id="btnSuffixModeSingle" class="flex-1 py-1 px-2 rounded-md bg-white text-emerald-800 shadow-sm transition flex items-center justify-center gap-1">
-              <i class="ph ph-magnifying-glass"></i> Адзіночны
-            </button>
-            <button id="btnSuffixModeComp" class="flex-1 py-1 px-2 rounded-md text-slate-600 hover:text-slate-800 transition flex items-center justify-center gap-1">
-              <i class="ph ph-sword"></i> Спаборніцтва
-            </button>
+          <div class="flex items-center gap-1 bg-slate-200/80 p-0.5 rounded-lg text-xs font-semibold relative">
+            <div class="flex-1 relative group">
+              <button id="btnSuffixModeSingle" class="w-full py-1 px-2 rounded-md bg-white text-emerald-800 shadow-sm transition flex items-center justify-center gap-1"
+                      title="Адзіночны рэжым: аналіз адной выбранай фіналі (напр. -віч). Паказвае поўную карту ўсіх паселішчаў Беларусі, рэйтынг самых частых прозвішчаў гэтага тыпу і статыстыку па раёнах.">
+                <i class="ph ph-magnifying-glass"></i> Адзіночны
+              </button>
+              <div class="pointer-events-none absolute left-0 top-full mt-1.5 w-60 p-2.5 bg-slate-900/95 backdrop-blur text-white text-[10px] leading-relaxed rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50 font-normal border border-slate-700">
+                <strong class="text-emerald-300 block mb-0.5 font-bold">Адзіночны аналіз фіналі:</strong>
+                Поўная карта рассялення адной канкрэтнай фіналі (напр. толькі <em>-віч</em> ці <em>-скі</em>), рэйтынг самых частых прозвішчаў і размеркаванне па раёнах.
+              </div>
+            </div>
+            <div class="flex-1 relative group">
+              <button id="btnSuffixModeComp" class="w-full py-1 px-2 rounded-md text-slate-600 hover:text-slate-800 transition flex items-center justify-center gap-1"
+                      title="Спаборніцтва: параўнанне 2 і больш фіналяў між сабой на адной карце. Паказвае карту тэрытарыяльнага дамінавання (гексагоны ці кругі), лідарства суфіксаў і лінію мяжы паміж формамі.">
+                <i class="ph ph-sword"></i> Спаборніцтва
+              </button>
+              <div class="pointer-events-none absolute right-0 top-full mt-1.5 w-60 p-2.5 bg-slate-900/95 backdrop-blur text-white text-[10px] leading-relaxed rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50 font-normal border border-slate-700">
+                <strong class="text-amber-300 block mb-0.5 font-bold">Спаборніцтва некалькіх фіналяў:</strong>
+                Супастаўленне 2 і больш суфіксаў на адной карце. Вызначае перавагу і лінію мяжы паміж формамі (напр. <em>-скі</em> vs <em>-віч</em> vs <em>-ко</em>) у выглядзе гексагонаў або раённых колаў.
+              </div>
+            </div>
           </div>
         </div>
 
@@ -694,10 +708,6 @@
           <input type="checkbox" id="chkAutoViewportSettlements" checked class="rounded text-emerald-700 focus:ring-emerald-500 w-3.5 h-3.5">
           <span title="Аўтаматычна адлюстроўваць усе гістарычныя вёскі пры набліжэнні карты (зум ≥ 10)">📍 Вёскі</span>
         </label>
-        <button id="btnOpenExportModal" class="flex items-center gap-1 ml-1 px-2.5 py-1.5 rounded-md bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition text-xs font-semibold" title="Спампаваць карту ўсёй Беларусі (PNG)">
-          <i class="ph ph-download-simple text-sm"></i>
-          <span>Спампаваць</span>
-        </button>
       </div>
 
       <!-- Heatmap Adjustment Floating Card -->
@@ -734,8 +744,8 @@
         <div class="space-y-1">
           <div class="flex items-center justify-between text-[11px]">
             <div class="flex items-center gap-1">
-              <span class="text-slate-700 font-medium">Кантраст (Адсячэнне пікаў):</span>
-              <span class="group relative cursor-pointer inline-flex items-center text-slate-400 hover:text-emerald-700">
+              <span class="text-slate-700 font-medium cursor-help" title="Кантраст (Адсячэнне пікаў): вызначае парог шчыльнасці для выхаду ў чырвоны колер. Высокі кантраст адсякае слабы фонавы шум і пакідае цяпло толькі ў сапраўдных радавых гнёздах і эпіцэнтры прозвішча ці фіналі.">Кантраст (Адсячэнне пікаў):</span>
+              <span class="group relative cursor-pointer inline-flex items-center text-slate-400 hover:text-emerald-700" title="Кантраст (Адсячэнне пікаў): вызначае парог шчыльнасці для выхаду ў чырвоны колер. Высокі кантраст адсякае слабы фонавы шум і пакідае цяпло толькі ў сапраўдных радавых гнёздах і эпіцэнтры прозвішча ці фіналі.">
                 <i class="ph ph-question text-xs"></i>
                 <span class="pointer-events-none absolute left-0 bottom-full mb-1.5 w-64 p-2.5 bg-slate-900/95 backdrop-blur text-white text-[10px] leading-relaxed rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-[500] font-normal border border-slate-700">
                   <strong class="text-amber-300 block mb-0.5 font-bold">Навошта гэты параметр?</strong>
@@ -757,8 +767,8 @@
         <div class="space-y-1">
           <div class="flex items-center justify-between text-[11px]">
             <div class="flex items-center gap-1">
-              <span class="text-slate-700 font-medium">Радыус ядра (Radius):</span>
-              <span class="group relative cursor-pointer inline-flex items-center text-slate-400 hover:text-emerald-700">
+              <span class="text-slate-700 font-medium cursor-help" title="Радыус ядра: зона ўплыву кожнай асобнай вёскі на цеплавы фон. Памяншэнне дазваляе лакалізаваць дакладныя мікра-ачагі вакол канкрэтных вёсак; павелічэнне злучае суседнія паселішчы ў шырокія рэгіянальныя арэалы.">Радыус ядра (Radius):</span>
+              <span class="group relative cursor-pointer inline-flex items-center text-slate-400 hover:text-emerald-700" title="Радыус ядра: зона ўплыву кожнай асобнай вёскі на цеплавы фон. Памяншэнне дазваляе лакалізаваць дакладныя мікра-ачагі вакол канкрэтных вёсак; павелічэнне злучае суседнія паселішчы ў шырокія рэгіянальныя арэалы.">
                 <i class="ph ph-question text-xs"></i>
                 <span class="pointer-events-none absolute left-0 bottom-full mb-1.5 w-64 p-2.5 bg-slate-900/95 backdrop-blur text-white text-[10px] leading-relaxed rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-[500] font-normal border border-slate-700">
                   <strong class="text-amber-300 block mb-0.5 font-bold">Навошта гэты параметр?</strong>
@@ -780,8 +790,8 @@
         <div class="space-y-1">
           <div class="flex items-center justify-between text-[11px]">
             <div class="flex items-center gap-1">
-              <span class="text-slate-700 font-medium">Размыццё (Blur / Пераход):</span>
-              <span class="group relative cursor-pointer inline-flex items-center text-slate-400 hover:text-emerald-700">
+              <span class="text-slate-700 font-medium cursor-help" title="Размыццё (Blur): ступень згладжвання пераходаў паміж шчыльнымі і рэдкімі ачагамі. Змяншэнне стварае рэзкія кантрасныя межы арэала; павелічэнне дае мяккае рассейванне.">Размыццё (Blur / Пераход):</span>
+              <span class="group relative cursor-pointer inline-flex items-center text-slate-400 hover:text-emerald-700" title="Размыццё (Blur): ступень згладжвання пераходаў паміж шчыльнымі і рэдкімі ачагамі. Змяншэнне стварае рэзкія кантрасныя межы арэала; павелічэнне дае мяккае рассейванне.">
                 <i class="ph ph-question text-xs"></i>
                 <span class="pointer-events-none absolute left-0 bottom-full mb-1.5 w-64 p-2.5 bg-slate-900/95 backdrop-blur text-white text-[10px] leading-relaxed rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-[500] font-normal border border-slate-700">
                   <strong class="text-amber-300 block mb-0.5 font-bold">Навошта гэты параметр?</strong>
@@ -1073,6 +1083,10 @@
     let currentSettlement = null;
     let currentSurname = null;
     let compareTags = ["Літвін", "Ліцвін"];
+    let currentActiveTab = 'search';
+    let lastNavigationSource = 'search';
+    let lastSuffixData = null;
+    let currentSuffixQuery = 'віч,іч,ыч';
 
     // DOM References
     const searchInput = document.getElementById('searchInput');
@@ -1101,6 +1115,7 @@
     };
 
     function switchTab(target) {
+      currentActiveTab = target;
       Object.keys(tabBtns).forEach(k => {
         const b = tabBtns[k];
         b.classList.remove('active', 'border-emerald-700', 'text-emerald-800');
@@ -1121,7 +1136,9 @@
       }
       if (target === 'suffix') {
         panelSuffix.classList.remove('hidden');
-        loadSuffixAnalysis('віч,іч,ыч');
+        if (!lastSuffixData && !currentCompData) {
+          loadSuffixAnalysis(currentSuffixQuery || 'віч,іч,ыч');
+        }
       }
       if (target === 'density') panelDensity.classList.remove('hidden');
 
@@ -1155,22 +1172,7 @@
     const presetHeatDefault = document.getElementById('presetHeatDefault');
     const presetHeatSmooth = document.getElementById('presetHeatSmooth');
 
-    // Patch simpleheat prototype so gradient stops with alpha=0 genuinely render as transparent (zero / "нічога")
-    if (window.simpleheat && window.simpleheat.prototype) {
-      window.simpleheat.prototype._colorize = function(pixels, grad) {
-        for (var a, s = 3, e = pixels.length; e > s; s += 4) {
-          a = 4 * pixels[s];
-          if (a) {
-            pixels[s - 3] = grad[a];
-            pixels[s - 2] = grad[a + 1];
-            pixels[s - 1] = grad[a + 2];
-            pixels[s] = Math.round(pixels[s] * (grad[a + 3] / 255));
-          }
-        }
-      };
-    }
-
-    // Heatmap dynamic tuning state (Default is warm / fire starting from zero/nothing)
+    // Heatmap dynamic tuning state (Default is warm / flame starting softly without blue haze)
     let currentHeatRadius = 19;
     let currentHeatBlur = 14;
     let currentHeatMax = 0.70;
@@ -1178,12 +1180,11 @@
 
     const HEAT_PALETTES = {
       warm: {
-        0.0: 'rgba(254, 240, 138, 0)',
-        0.28: 'rgba(254, 240, 138, 0)',
-        0.50: 'rgba(250, 204, 21, 0.75)',
-        0.72: 'rgba(249, 115, 22, 0.90)',
-        0.90: 'rgba(239, 68, 68, 0.95)',
-        1.0: '#991b1b'
+        0.05: '#fef08a',
+        0.22: '#facc15',
+        0.48: '#f97316',
+        0.75: '#ef4444',
+        1.0: '#7f1d1d'
       },
       classic: {
         0.25: '#3b82f6',
@@ -1213,8 +1214,9 @@
         radius: currentHeatRadius,
         blur: currentHeatBlur,
         max: currentHeatMax,
+        maxZoom: 10,
         gradient: HEAT_PALETTES[currentHeatPalette] || HEAT_PALETTES.warm,
-        minOpacity: (currentHeatPalette === 'warm' ? 0.05 : 0.22)
+        minOpacity: (currentHeatPalette === 'warm' ? 0.05 : 0.20)
       });
       if (typeof heatLayer.redraw === 'function') heatLayer.redraw();
       else if (typeof heatLayer._redraw === 'function') heatLayer._redraw();
@@ -1387,13 +1389,13 @@
         map.addLayer(dotsLayer);
 
       } else if (mode === 'heat') {
-        const heatData = validPoints.map(p => [p.lat, p.lon, 0.7]);
+        const heatData = validPoints.map(p => [p.lat, p.lon, 0.85]);
         heatLayer = L.heatLayer(heatData, {
           radius: currentHeatRadius,
           blur: currentHeatBlur,
           max: currentHeatMax,
-          maxZoom: 13,
-          minOpacity: (currentHeatPalette === 'warm' ? 0.05 : 0.22),
+          maxZoom: 10,
+          minOpacity: (currentHeatPalette === 'warm' ? 0.05 : 0.20),
           gradient: HEAT_PALETTES[currentHeatPalette] || HEAT_PALETTES.warm
         });
         heatLayer.addTo(map);
@@ -1672,6 +1674,9 @@
     // Settlement Detail View
     async function loadSettlement(identifier) {
       try {
+        if (currentActiveTab && currentActiveTab !== 'search') {
+          lastNavigationSource = currentActiveTab;
+        }
         switchTab('search');
         const res = await fetch(`/api/settlement/${encodeURIComponent(identifier)}`);
         if (!res.ok) return;
@@ -1682,6 +1687,19 @@
         resultsView.classList.add('hidden');
         surnameDetailView.classList.add('hidden');
         settlementDetailView.classList.remove('hidden');
+
+        const btnBack = document.getElementById('btnBackFromSettlement');
+        if (btnBack) {
+          if (lastNavigationSource === 'suffix') {
+            btnBack.innerHTML = '<i class="ph ph-arrow-left"></i> Назад да фіналяў';
+          } else if (lastNavigationSource === 'density') {
+            btnBack.innerHTML = '<i class="ph ph-arrow-left"></i> Назад да шчыльнасці';
+          } else if (lastNavigationSource === 'compare') {
+            btnBack.innerHTML = '<i class="ph ph-arrow-left"></i> Назад да параўнання';
+          } else {
+            btnBack.innerHTML = '<i class="ph ph-arrow-left"></i> Назад да вынікаў';
+          }
+        }
 
         const isExtinct = st.name_be === "не існуе";
         document.getElementById('cardTitle').innerText = isExtinct ? st.name_ru : st.name_be;
@@ -1762,6 +1780,9 @@
     // Surname Detail View
     async function loadSurname(identifier) {
       try {
+        if (currentActiveTab && currentActiveTab !== 'search') {
+          lastNavigationSource = currentActiveTab;
+        }
         switchTab('search');
         const res = await fetch(`/api/surname/${encodeURIComponent(identifier)}`);
         if (!res.ok) return;
@@ -1772,6 +1793,19 @@
         resultsView.classList.add('hidden');
         settlementDetailView.classList.add('hidden');
         surnameDetailView.classList.remove('hidden');
+
+        const btnBack = document.getElementById('btnBackFromSurname');
+        if (btnBack) {
+          if (lastNavigationSource === 'suffix') {
+            btnBack.innerHTML = '<i class="ph ph-arrow-left"></i> Назад да фіналяў';
+          } else if (lastNavigationSource === 'density') {
+            btnBack.innerHTML = '<i class="ph ph-arrow-left"></i> Назад да шчыльнасці';
+          } else if (lastNavigationSource === 'compare') {
+            btnBack.innerHTML = '<i class="ph ph-arrow-left"></i> Назад да параўнання';
+          } else {
+            btnBack.innerHTML = '<i class="ph ph-arrow-left"></i> Назад да вынікаў';
+          }
+        }
 
         document.getElementById('surnameCardTitle').innerText = sn.surname_be;
         document.getElementById('surnameCardCount').innerText = `Зафіксавана ў ${sn.total_occurrences} населеных пунктах (без абмежавання 12)`;
@@ -1893,12 +1927,44 @@
 
     document.getElementById('btnBackFromSettlement').onclick = () => {
       window.location.hash = '';
-      if (searchInput.value.trim()) showResults(); else showWelcome();
+      currentSettlement = null;
+      settlementDetailView.classList.add('hidden');
+
+      if (lastNavigationSource === 'suffix') {
+        switchTab('suffix');
+        if (lastSuffixData && lastSuffixData.points) {
+          renderPointsOnMap(lastSuffixData.points, currentMapMode);
+        }
+      } else if (lastNavigationSource === 'density') {
+        switchTab('density');
+      } else if (lastNavigationSource === 'compare') {
+        switchTab('compare');
+      } else {
+        switchTab('search');
+        if (searchInput.value.trim()) showResults(); else showWelcome();
+      }
     };
 
     document.getElementById('btnBackFromSurname').onclick = () => {
       window.location.hash = '';
-      if (searchInput.value.trim()) showResults(); else showWelcome();
+      currentSurname = null;
+      surnameDetailView.classList.add('hidden');
+
+      if (lastNavigationSource === 'suffix') {
+        switchTab('suffix');
+        if (lastSuffixData && lastSuffixData.points) {
+          renderPointsOnMap(lastSuffixData.points, currentMapMode);
+        } else if (currentCompData && currentCompData.points) {
+          renderPointsOnMap(currentCompData.points, currentMapMode);
+        }
+      } else if (lastNavigationSource === 'density') {
+        switchTab('density');
+      } else if (lastNavigationSource === 'compare') {
+        switchTab('compare');
+      } else {
+        switchTab('search');
+        if (searchInput.value.trim()) showResults(); else showWelcome();
+      }
     };
 
     // -------------------------------------------------------------
@@ -2137,6 +2203,8 @@
         const res = await fetch(`/api/analysis/suffix?suffix=${encodeURIComponent(suffix)}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        lastSuffixData = data;
+        currentSuffixQuery = suffix;
 
         document.getElementById('suffixStatSurnames').innerText = data.surnames_count.toLocaleString();
         document.getElementById('suffixStatSettlements').innerText = data.unique_settlements.toLocaleString();
@@ -2149,6 +2217,7 @@
           chip.className = 'px-2 py-0.5 bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800 rounded-full border border-slate-200 transition';
           chip.innerHTML = `${sn.surname_be} <span class="text-[10px] text-emerald-700 font-bold">${sn.freq}</span>`;
           chip.onclick = () => {
+            lastNavigationSource = 'suffix';
             window.location.hash = `/surname/${encodeURIComponent(sn.surname_be)}`;
           };
           topContainer.appendChild(chip);
@@ -3125,11 +3194,23 @@
     }
 
     function loadImageAsync(url) {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => resolve(img);
-        img.onerror = (e) => reject(e);
+        img.onerror = () => {
+          // If direct load failed (e.g. CORS or blocked policy), try proxying through backend
+          if (!url.startsWith('/api/proxy/tile') && url.startsWith('http')) {
+            const proxyUrl = `/api/proxy/tile?url=${encodeURIComponent(url)}`;
+            const pImg = new Image();
+            pImg.crossOrigin = 'anonymous';
+            pImg.onload = () => resolve(pImg);
+            pImg.onerror = () => resolve(null); // gracefully continue on edge missing tiles
+            pImg.src = proxyUrl;
+          } else {
+            resolve(null);
+          }
+        };
         img.src = url;
       });
     }
@@ -3314,13 +3395,15 @@
                 tileUrl = `/api/proxy/tile?url=${encodeURIComponent(tileUrl)}`;
               }
               const img = await loadImageAsync(tileUrl);
-              const dx = tx * 256 - minX;
-              const dy = ty * 256 - minY;
-              if (activeBase.name.includes('OpenStreetMap')) {
-                ctx.filter = 'brightness(1.12) contrast(0.85) saturate(0.45)';
+              if (img) {
+                const dx = tx * 256 - minX;
+                const dy = ty * 256 - minY;
+                if (activeBase.name.includes('OpenStreetMap')) {
+                  ctx.filter = 'brightness(1.12) contrast(0.85) saturate(0.45)';
+                }
+                ctx.drawImage(img, dx, dy, 256, 256);
+                ctx.filter = 'none';
               }
-              ctx.drawImage(img, dx, dy, 256, 256);
-              ctx.filter = 'none';
             } catch (err) {
               // Gracefully continue on edge missing tiles
             } finally {
@@ -3451,14 +3534,14 @@
 
         const heatData = (currentActivePoints || []).filter(p => p.lat && p.lon).map(p => {
           const pt = map.project([p.lat, p.lon], zoom);
-          return [Math.round(pt.x - minX), Math.round(pt.y - minY), 0.7];
+          return [Math.round(pt.x - minX), Math.round(pt.y - minY), 0.85];
         });
 
         heat.data(heatData);
         heat.radius(r, b);
         heat.max(currentHeatMax);
         heat.gradient(HEAT_PALETTES[currentHeatPalette] || HEAT_PALETTES.warm);
-        heat.draw(currentHeatPalette === 'warm' ? 0.05 : 0.22);
+        heat.draw(currentHeatPalette === 'warm' ? 0.05 : 0.20);
 
         ctx.drawImage(offCanvas, 0, 0);
 
@@ -3474,16 +3557,42 @@
 
       setProgress(95, 'Фарміраванне выніковага PNG...');
 
-      canvas.toBlob((blob) => {
-        if (!blob) throw new Error('Не ўдалося сфарміраваць PNG');
+      try {
+        const blob = await new Promise((resolve, reject) => {
+          try {
+            canvas.toBlob((b) => {
+              if (b) resolve(b);
+              else {
+                try {
+                  const dataUrl = canvas.toDataURL('image/png');
+                  const binStr = atob(dataUrl.split(',')[1]);
+                  const len = binStr.length;
+                  const u8 = new Uint8Array(len);
+                  for (let i = 0; i < len; i++) u8[i] = binStr.charCodeAt(i);
+                  resolve(new Blob([u8], { type: 'image/png' }));
+                } catch (e2) {
+                  reject(new Error('Не ўдалося сфарміраваць PNG: магчыма, перавышаны ліміт памеру або палатно заблакавана CORS'));
+                }
+              }
+            }, 'image/png');
+          } catch (e) {
+            reject(e);
+          }
+        });
+
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
         const suffixPart = currentSurname ? `_${currentSurname.slug || currentSurname.surname_be}` : (isSuffixComp ? '_competition' : '');
         a.download = `dapamozhnik_belarus_zoom${zoom}${suffixPart}.png`;
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+
+        setTimeout(() => {
+          if (a.parentNode) document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 60000);
 
         setProgress(100, 'Мапа паспяхова спампавана!');
         setTimeout(() => {
@@ -3491,7 +3600,9 @@
           exportProgressBox?.classList.add('hidden');
           btnRunExportDownload.disabled = false;
         }, 1200);
-      }, 'image/png');
+      } catch (exportErr) {
+        throw exportErr;
+      }
     }
 
     if (btnRunExportDownload) {
