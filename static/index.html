@@ -3288,13 +3288,21 @@
       ctx.fillStyle = '#ffffff';
 
       let subjectText = 'Геаграфія паселішчаў і прозвішчаў Беларусі';
+      const isSuffixActive = panelSuffix && !panelSuffix.classList.contains('hidden');
+      const isSearchActive = panelSearch && !panelSearch.classList.contains('hidden');
+      const isSurnameActive = isSearchActive && surnameDetailView && !surnameDetailView.classList.contains('hidden') && currentSurname;
+      const isSettlementActive = isSearchActive && settlementDetailView && !settlementDetailView.classList.contains('hidden') && currentSettlement;
+
       if (isSuffixComp) {
         subjectText = `Спаборніцтва: ${compActiveGroups.slice(0, 3).join(' vs ')}`;
-      } else if (currentSurname) {
-        subjectText = `Арэал: ${currentSurname.surname_be} (${currentSurname.total_occurrences} вёсак)`;
-      } else if (document.getElementById('suffixSingleContainer') && !document.getElementById('suffixSingleContainer').classList.contains('hidden') && !panelSuffix.classList.contains('hidden')) {
-        const curSuff = document.querySelector('.suffix-btn.active')?.dataset.suffix || 'віч,іч';
+      } else if (isSuffixActive) {
+        const curSuff = currentSuffixQuery || document.querySelector('.suffix-btn.bg-emerald-800')?.dataset.suffix || 'фіналі';
         subjectText = `Фіналі: -${curSuff} (${totalPointsCounter.innerText} вёсак)`;
+      } else if (isSurnameActive) {
+        subjectText = `Арэал: ${currentSurname.surname_be} (${currentSurname.total_occurrences || totalPointsCounter.innerText} вёсак)`;
+      } else if (isSettlementActive) {
+        const sName = currentSettlement.name_be !== "не існуе" ? currentSettlement.name_be : currentSettlement.name_ru;
+        subjectText = `Паселішча: ${sName} (${currentSettlement.district} р-н)`;
       }
       ctx.fillText(subjectText, cardX + pad, curY);
 
@@ -3529,17 +3537,44 @@
         offCanvas.height = H;
         const heat = simpleheat(offCanvas);
 
-        const r = Math.round(currentHeatRadius * Math.pow(2, zoom - 7));
-        const b = Math.round(currentHeatBlur * Math.pow(2, zoom - 7));
+        // Spatial cell binning and zoom attenuation matching Leaflet.heat
+        const cell = Math.max(8, (currentHeatRadius + currentHeatBlur) / 2);
+        const maxZoom = 10;
+        const f = 1 / Math.pow(2, Math.max(0, Math.min(maxZoom - zoom, 12)));
+        const maxVal = currentHeatMax || 0.70;
 
-        const heatData = (currentActivePoints || []).filter(p => p.lat && p.lon).map(p => {
+        const grid = {};
+        (currentActivePoints || []).filter(p => p.lat && p.lon).forEach(p => {
           const pt = map.project([p.lat, p.lon], zoom);
-          return [Math.round(pt.x - minX), Math.round(pt.y - minY), 0.85];
+          const px = pt.x - minX;
+          const py = pt.y - minY;
+          if (px < -cell || px > W + cell || py < -cell || py > H + cell) return;
+
+          const col = Math.floor(px / cell);
+          const row = Math.floor(py / cell);
+          const key = `${col}_${row}`;
+          const w = 0.85 * f;
+
+          if (!grid[key]) {
+            grid[key] = { x: px, y: py, weight: w };
+          } else {
+            const item = grid[key];
+            const newWeight = item.weight + w;
+            item.x = (item.x * item.weight + px * w) / newWeight;
+            item.y = (item.y * item.weight + py * w) / newWeight;
+            item.weight = newWeight;
+          }
         });
 
+        const heatData = [];
+        for (const key in grid) {
+          const item = grid[key];
+          heatData.push([Math.round(item.x), Math.round(item.y), Math.min(item.weight, maxVal)]);
+        }
+
         heat.data(heatData);
-        heat.radius(r, b);
-        heat.max(currentHeatMax);
+        heat.radius(currentHeatRadius, currentHeatBlur);
+        heat.max(maxVal);
         heat.gradient(HEAT_PALETTES[currentHeatPalette] || HEAT_PALETTES.warm);
         heat.draw(currentHeatPalette === 'warm' ? 0.05 : 0.20);
 
@@ -3584,8 +3619,18 @@
         const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
-        const suffixPart = currentSurname ? `_${currentSurname.slug || currentSurname.surname_be}` : (isSuffixComp ? '_competition' : '');
-        a.download = `dapamozhnik_belarus_zoom${zoom}${suffixPart}.png`;
+
+        let fileTag = '';
+        if (isSuffixComp) {
+          fileTag = '_competition';
+        } else if (panelSuffix && !panelSuffix.classList.contains('hidden')) {
+          fileTag = `_suffix_${currentSuffixQuery || 'finali'}`;
+        } else if (currentSurname && surnameDetailView && !surnameDetailView.classList.contains('hidden')) {
+          fileTag = `_${currentSurname.slug || currentSurname.surname_be}`;
+        } else if (currentSettlement && settlementDetailView && !settlementDetailView.classList.contains('hidden')) {
+          fileTag = `_${currentSettlement.slug || currentSettlement.id}`;
+        }
+        a.download = `dapamozhnik_belarus_zoom${zoom}${fileTag}.png`;
         document.body.appendChild(a);
         a.click();
 

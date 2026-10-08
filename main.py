@@ -743,7 +743,8 @@ def get_by_suffix(
         GROUP BY st.district
     """)
     st_by_dist = dict(cur.fetchall())
-    total_unique_settlements = sum(st_by_dist.values())
+    cur.execute("SELECT COUNT(*) FROM tmp_st")
+    total_unique_settlements = cur.fetchone()[0]
 
     # All settlements with GPS coordinates across 100% of Belarus without truncation
     cur.execute("""
