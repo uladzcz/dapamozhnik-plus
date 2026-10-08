@@ -20,6 +20,7 @@ from fastapi import FastAPI, Query, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from db import get_db_connection, slugify, py_lower, py_norm, py_fuzzy_norm
 
 app = FastAPI(
@@ -34,6 +35,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Cache for total historical settlements per district
 _DISTRICT_TOTALS = None
@@ -708,44 +710,48 @@ def get_by_suffix(
         conn.close()
         return {"suffix": suffix, "surnames_count": 0, "settlements_count": 0}
 
-    # Find matching surnames
-    conds = ["sn.surname_be LIKE ?" for _ in parts]
     pats = [f"%{p}" for p in parts]
 
-    cur.execute(f"""
+    # Fast temp tables for instant retrieval of all settlements across 100% of Belarus
+    cur.execute("CREATE TEMP TABLE tmp_s (id INTEGER PRIMARY KEY)")
+    cur.execute(f"INSERT INTO tmp_s(id) SELECT id FROM surnames WHERE {' OR '.join(['surname_be LIKE ?' for _ in parts])}", pats)
+
+    cur.execute("""
         SELECT sn.id, sn.surname_be, COUNT(ss.settlement_id) as freq
-        FROM surnames sn
+        FROM tmp_s
+        JOIN surnames sn ON tmp_s.id = sn.id
         LEFT JOIN settlement_surnames ss ON sn.id = ss.surname_id
-        WHERE {" OR ".join(conds)}
         GROUP BY sn.id
         ORDER BY freq DESC
-    """, pats)
-
+    """)
     matching_surnames = [dict(r) for r in cur.fetchall()]
     top_surnames = matching_surnames[:25]
 
+    cur.execute("CREATE TEMP TABLE tmp_st (id INTEGER PRIMARY KEY)")
+    cur.execute("""
+        INSERT OR IGNORE INTO tmp_st(id)
+        SELECT ss.settlement_id FROM settlement_surnames ss JOIN tmp_s ON ss.surname_id = tmp_s.id
+    """)
+
     # Fast distinct settlements count per district
-    cur.execute(f"""
-        SELECT st.district, COUNT(DISTINCT st.id) as cnt
+    cur.execute("""
+        SELECT st.district, COUNT(*) as cnt
         FROM settlements st
-        JOIN settlement_surnames ss ON st.id = ss.settlement_id
-        JOIN surnames sn ON ss.surname_id = sn.id
-        WHERE ({" OR ".join(conds)}) AND st.district != ''
+        JOIN tmp_st ON st.id = tmp_st.id
+        WHERE st.district != ''
         GROUP BY st.district
-    """, pats)
+    """)
     st_by_dist = dict(cur.fetchall())
     total_unique_settlements = sum(st_by_dist.values())
 
-    # Fast sample points for map display (capped at 1500 to keep UI responsive)
-    cur.execute(f"""
-        SELECT DISTINCT st.id, st.slug, st.name_be, st.name_ru, st.settlement_type, st.district, st.lat, st.lon, sn.surname_be
+    # All settlements with GPS coordinates across 100% of Belarus without truncation
+    cur.execute("""
+        SELECT st.id, st.slug, st.name_be, st.name_ru, st.settlement_type, st.district, st.lat, st.lon
         FROM settlements st
-        JOIN settlement_surnames ss ON st.id = ss.settlement_id
-        JOIN surnames sn ON ss.surname_id = sn.id
-        WHERE ({" OR ".join(conds)}) AND st.lat IS NOT NULL
-        LIMIT 1500
-    """, pats)
-    sample_points = [dict(r) for r in cur.fetchall()]
+        JOIN tmp_st ON st.id = tmp_st.id
+        WHERE st.lat IS NOT NULL
+    """)
+    all_points = [dict(r) for r in cur.fetchall()]
     conn.close()
 
     totals = get_district_totals()
@@ -774,7 +780,7 @@ def get_by_suffix(
         "unique_settlements": total_unique_settlements,
         "top_surnames": top_surnames,
         "districts_density": density_list[:20],
-        "points": sample_points
+        "points": all_points
     }
 
 @app.get("/api/analysis/suffix-competition")

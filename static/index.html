@@ -810,6 +810,7 @@
     const dominanceLayer = L.featureGroup();
     const hexLayer = L.featureGroup();
     const viewportSettlementsLayer = L.featureGroup();
+    const pointsCanvas = L.canvas({ padding: 0.5 });
     let heatLayer = null;
 
     map.addLayer(markersCluster);
@@ -931,13 +932,14 @@
       map.removeLayer(dotsLayer);
 
       const validPoints = currentActivePoints.filter(p => p.lat && p.lon);
-      totalPointsCounter.innerText = validPoints.length;
+      totalPointsCounter.innerText = validPoints.length.toLocaleString();
 
       if (validPoints.length === 0) return;
 
       const bounds = [];
 
       if (mode === 'clusters') {
+        const markerList = [];
         validPoints.forEach(p => {
           const color = p.color || '#047857';
           const title = p.name_be && p.name_be !== "не існуе" ? p.name_be : p.name_ru;
@@ -950,9 +952,10 @@
               <button onclick="window.location.hash='/settlement/${p.slug || p.id}'" class="mt-1.5 bg-emerald-700 hover:bg-emerald-800 text-white px-2 py-0.5 rounded text-[10px] font-semibold">Адкрыць картку</button>
             </div>
           `);
-          markersCluster.addLayer(marker);
+          markerList.push(marker);
           bounds.push([p.lat, p.lon]);
         });
+        markersCluster.addLayers(markerList);
         map.addLayer(markersCluster);
 
       } else if (mode === 'dots') {
@@ -960,11 +963,12 @@
           const color = p.color || '#059669';
           const title = p.name_be && p.name_be !== "не існуе" ? p.name_be : p.name_ru;
           const circle = L.circleMarker([p.lat, p.lon], {
-            radius: 6,
+            renderer: pointsCanvas,
+            radius: 3.5,
             fillColor: color,
-            fillOpacity: 0.82,
+            fillOpacity: 0.75,
             color: '#ffffff',
-            weight: 1.2
+            weight: 0.8
           });
           circle.bindPopup(`
             <div class="text-xs font-sans">
@@ -980,13 +984,13 @@
         map.addLayer(dotsLayer);
 
       } else if (mode === 'heat') {
-        const heatData = validPoints.map(p => [p.lat, p.lon, 0.75]);
+        const heatData = validPoints.map(p => [p.lat, p.lon, 0.7]);
         heatLayer = L.heatLayer(heatData, {
-          radius: 22,
-          blur: 16,
-          maxZoom: 12,
-          minOpacity: 0.35,
-          gradient: { 0.4: '#3b82f6', 0.65: '#eab308', 0.85: '#f97316', 1.0: '#dc2626' }
+          radius: 19,
+          blur: 14,
+          maxZoom: 13,
+          minOpacity: 0.22,
+          gradient: { 0.25: '#3b82f6', 0.5: '#10b981', 0.72: '#f59e0b', 0.92: '#ef4444' }
         });
         heatLayer.addTo(map);
         validPoints.forEach(p => bounds.push([p.lat, p.lon]));
