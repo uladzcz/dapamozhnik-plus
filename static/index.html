@@ -733,7 +733,17 @@
         <!-- Slider: Contrast / Max intensity -->
         <div class="space-y-1">
           <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-700 font-medium">Кантраст (Адсячэнне пікаў):</span>
+            <div class="flex items-center gap-1">
+              <span class="text-slate-700 font-medium">Кантраст (Адсячэнне пікаў):</span>
+              <span class="group relative cursor-pointer inline-flex items-center text-slate-400 hover:text-emerald-700">
+                <i class="ph ph-question text-xs"></i>
+                <span class="pointer-events-none absolute left-0 bottom-full mb-1.5 w-64 p-2.5 bg-slate-900/95 backdrop-blur text-white text-[10px] leading-relaxed rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-[500] font-normal border border-slate-700">
+                  <strong class="text-amber-300 block mb-0.5 font-bold">Навошта гэты параметр?</strong>
+                  Вызначае парог шчыльнасці для выхаду ў чырвоны колер. Калі прозвішча ці фіналь сустракаецца ў тысяч вёсак (як <em>-віч</em> ці <em>-скі</em>), нізкі парог залівае ўсю краіну аднолькавай чырванню. Павелічэнне кантрасту (1.2–1.8) адсякае слабы фонавы шум і пакідае цёплае цяпло <strong>толькі ў сапраўдных родавых гнёздах і эпіцэнтры</strong>.
+                  <span class="absolute left-2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></span>
+                </span>
+              </span>
+            </div>
             <span id="labelHeatMax" class="font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">0.70</span>
           </div>
           <input type="range" id="sliderHeatMax" min="0.20" max="2.20" step="0.05" value="0.70" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-700">
@@ -746,7 +756,17 @@
         <!-- Slider: Radius -->
         <div class="space-y-1">
           <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-700 font-medium">Радыус ядра (Radius):</span>
+            <div class="flex items-center gap-1">
+              <span class="text-slate-700 font-medium">Радыус ядра (Radius):</span>
+              <span class="group relative cursor-pointer inline-flex items-center text-slate-400 hover:text-emerald-700">
+                <i class="ph ph-question text-xs"></i>
+                <span class="pointer-events-none absolute left-0 bottom-full mb-1.5 w-64 p-2.5 bg-slate-900/95 backdrop-blur text-white text-[10px] leading-relaxed rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-[500] font-normal border border-slate-700">
+                  <strong class="text-amber-300 block mb-0.5 font-bold">Навошта гэты параметр?</strong>
+                  Зона ўплыву кожнай асобнай вёскі на цеплавы фон (у пікселях). Памяншэнне (10–14 px) дазваляе лакалізаваць дакладныя мікра-ачагі вакол канкрэтных вёсак. Павелічэнне (20–30 px) злучае суседнія паселішчы ў суцэльныя рэгіянальныя арэалы.
+                  <span class="absolute left-2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></span>
+                </span>
+              </span>
+            </div>
             <span id="labelHeatRadius" class="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">19 px</span>
           </div>
           <input type="range" id="sliderHeatRadius" min="8" max="38" step="1" value="19" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-700">
@@ -759,7 +779,17 @@
         <!-- Slider: Blur -->
         <div class="space-y-1">
           <div class="flex items-center justify-between text-[11px]">
-            <span class="text-slate-700 font-medium">Размыццё (Blur / Пераход):</span>
+            <div class="flex items-center gap-1">
+              <span class="text-slate-700 font-medium">Размыццё (Blur / Пераход):</span>
+              <span class="group relative cursor-pointer inline-flex items-center text-slate-400 hover:text-emerald-700">
+                <i class="ph ph-question text-xs"></i>
+                <span class="pointer-events-none absolute left-0 bottom-full mb-1.5 w-64 p-2.5 bg-slate-900/95 backdrop-blur text-white text-[10px] leading-relaxed rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-[500] font-normal border border-slate-700">
+                  <strong class="text-amber-300 block mb-0.5 font-bold">Навошта гэты параметр?</strong>
+                  Ступень згладжвання пераходаў паміж шчыльнымі і рэдкімі зонамі. Змяншэнне стварае рэзкія кантрасныя межы (бачна, дзе арэал раптоўна знікае на мяжы рэгіёна). Павелічэнне дае мяккае градыентнае рассейванне.
+                  <span class="absolute left-2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></span>
+                </span>
+              </span>
+            </div>
             <span id="labelHeatBlur" class="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">14 px</span>
           </div>
           <input type="range" id="sliderHeatBlur" min="4" max="28" step="1" value="14" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-700">
@@ -771,11 +801,23 @@
 
         <!-- Palette Selector -->
         <div class="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
-          <span class="text-slate-600 font-medium">Палітра:</span>
-          <select id="selHeatPalette" class="py-1 px-2 bg-white border border-slate-300 rounded text-xs text-slate-700 focus:ring-1 focus:ring-emerald-600 outline-none">
-            <option value="classic">Класічная (Сіні → Жоўты → Чырвоны)</option>
-            <option value="spectral">Спектральная (Plasma / Агністая)</option>
-            <option value="thermal">Тэрмальная (Фіялетавы → Аранжавы)</option>
+          <div class="flex items-center gap-1">
+            <span class="text-slate-600 font-medium">Палітра:</span>
+            <span class="group relative cursor-pointer inline-flex items-center text-slate-400 hover:text-emerald-700">
+              <i class="ph ph-question text-xs"></i>
+              <span class="pointer-events-none absolute left-0 bottom-full mb-1.5 w-64 p-2.5 bg-slate-900/95 backdrop-blur text-white text-[10px] leading-relaxed rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-[500] font-normal border border-slate-700">
+                <strong class="text-amber-300 block mb-0.5 font-bold">Як працуюць палітры?</strong>
+                <strong>Асноўная (з нічога):</strong> пачынаецца з чыстага празрыстага фону без сіняй заліўкі і праяўляецца жоўта-чырвоным цяплом толькі там, дзе ёсць рэальная канцэнтрацыя.<br>
+                <strong>Класічная / Спектральная / Тэрмальная:</strong> выкарыстоўваюць халодныя сінія і фіялетавыя адценні для фонавага пакрыцця.
+                <span class="absolute left-2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></span>
+              </span>
+            </span>
+          </div>
+          <select id="selHeatPalette" class="py-1 px-2 bg-white border border-slate-300 rounded text-xs text-slate-700 focus:ring-1 focus:ring-emerald-600 outline-none max-w-[170px] truncate">
+            <option value="warm" selected>Агністая (з нічога) — Асноўная</option>
+            <option value="classic">Класічная (з сінім)</option>
+            <option value="spectral">Спектральная (Агністая/Цыян)</option>
+            <option value="thermal">Тэрмальная (Plasma)</option>
           </select>
         </div>
       </div>
@@ -1113,16 +1155,56 @@
     const presetHeatDefault = document.getElementById('presetHeatDefault');
     const presetHeatSmooth = document.getElementById('presetHeatSmooth');
 
-    // Heatmap dynamic tuning state
+    // Patch simpleheat prototype so gradient stops with alpha=0 genuinely render as transparent (zero / "нічога")
+    if (window.simpleheat && window.simpleheat.prototype) {
+      window.simpleheat.prototype._colorize = function(pixels, grad) {
+        for (var a, s = 3, e = pixels.length; e > s; s += 4) {
+          a = 4 * pixels[s];
+          if (a) {
+            pixels[s - 3] = grad[a];
+            pixels[s - 2] = grad[a + 1];
+            pixels[s - 1] = grad[a + 2];
+            pixels[s] = Math.round(pixels[s] * (grad[a + 3] / 255));
+          }
+        }
+      };
+    }
+
+    // Heatmap dynamic tuning state (Default is warm / fire starting from zero/nothing)
     let currentHeatRadius = 19;
     let currentHeatBlur = 14;
     let currentHeatMax = 0.70;
-    let currentHeatPalette = 'classic';
+    let currentHeatPalette = 'warm';
 
     const HEAT_PALETTES = {
-      classic: { 0.25: '#3b82f6', 0.5: '#10b981', 0.72: '#f59e0b', 0.92: '#ef4444' },
-      spectral: { 0.2: '#4338ca', 0.45: '#06b6d4', 0.65: '#eab308', 0.85: '#f97316', 0.98: '#dc2626' },
-      thermal: { 0.2: '#0d0887', 0.45: '#7e03a8', 0.7: '#cc4778', 0.88: '#f89540', 0.98: '#f0f921' }
+      warm: {
+        0.0: 'rgba(254, 240, 138, 0)',
+        0.28: 'rgba(254, 240, 138, 0)',
+        0.50: 'rgba(250, 204, 21, 0.75)',
+        0.72: 'rgba(249, 115, 22, 0.90)',
+        0.90: 'rgba(239, 68, 68, 0.95)',
+        1.0: '#991b1b'
+      },
+      classic: {
+        0.25: '#3b82f6',
+        0.50: '#10b981',
+        0.72: '#f59e0b',
+        0.92: '#ef4444'
+      },
+      spectral: {
+        0.20: '#4338ca',
+        0.45: '#06b6d4',
+        0.65: '#eab308',
+        0.85: '#f97316',
+        0.98: '#dc2626'
+      },
+      thermal: {
+        0.20: '#0d0887',
+        0.45: '#7e03a8',
+        0.70: '#cc4778',
+        0.88: '#f89540',
+        0.98: '#f0f921'
+      }
     };
 
     function applyHeatmapSettings() {
@@ -1131,8 +1213,8 @@
         radius: currentHeatRadius,
         blur: currentHeatBlur,
         max: currentHeatMax,
-        gradient: HEAT_PALETTES[currentHeatPalette] || HEAT_PALETTES.classic,
-        minOpacity: 0.22
+        gradient: HEAT_PALETTES[currentHeatPalette] || HEAT_PALETTES.warm,
+        minOpacity: (currentHeatPalette === 'warm' ? 0.05 : 0.22)
       });
       if (typeof heatLayer.redraw === 'function') heatLayer.redraw();
       else if (typeof heatLayer._redraw === 'function') heatLayer._redraw();
@@ -1186,7 +1268,7 @@
         currentHeatMax = 1.35; sliderHeatMax.value = 1.35; labelHeatMax.innerText = "1.35";
         currentHeatRadius = 12; sliderHeatRadius.value = 12; labelHeatRadius.innerText = "12 px";
         currentHeatBlur = 8; sliderHeatBlur.value = 8; labelHeatBlur.innerText = "8 px";
-        currentHeatPalette = 'spectral'; selHeatPalette.value = 'spectral';
+        currentHeatPalette = 'warm'; selHeatPalette.value = 'warm';
         updatePresetButtons(presetHeatSharp);
         applyHeatmapSettings();
       };
@@ -1195,7 +1277,7 @@
         currentHeatMax = 0.70; sliderHeatMax.value = 0.70; labelHeatMax.innerText = "0.70";
         currentHeatRadius = 19; sliderHeatRadius.value = 19; labelHeatRadius.innerText = "19 px";
         currentHeatBlur = 14; sliderHeatBlur.value = 14; labelHeatBlur.innerText = "14 px";
-        currentHeatPalette = 'classic'; selHeatPalette.value = 'classic';
+        currentHeatPalette = 'warm'; selHeatPalette.value = 'warm';
         updatePresetButtons(presetHeatDefault);
         applyHeatmapSettings();
       };
@@ -1204,7 +1286,7 @@
         currentHeatMax = 0.50; sliderHeatMax.value = 0.50; labelHeatMax.innerText = "0.50";
         currentHeatRadius = 25; sliderHeatRadius.value = 25; labelHeatRadius.innerText = "25 px";
         currentHeatBlur = 18; sliderHeatBlur.value = 18; labelHeatBlur.innerText = "18 px";
-        currentHeatPalette = 'classic'; selHeatPalette.value = 'classic';
+        currentHeatPalette = 'warm'; selHeatPalette.value = 'warm';
         updatePresetButtons(presetHeatSmooth);
         applyHeatmapSettings();
       };
@@ -1311,8 +1393,8 @@
           blur: currentHeatBlur,
           max: currentHeatMax,
           maxZoom: 13,
-          minOpacity: 0.22,
-          gradient: HEAT_PALETTES[currentHeatPalette] || HEAT_PALETTES.classic
+          minOpacity: (currentHeatPalette === 'warm' ? 0.05 : 0.22),
+          gradient: HEAT_PALETTES[currentHeatPalette] || HEAT_PALETTES.warm
         });
         heatLayer.addTo(map);
         validPoints.forEach(p => bounds.push([p.lat, p.lon]));
@@ -3375,8 +3457,8 @@
         heat.data(heatData);
         heat.radius(r, b);
         heat.max(currentHeatMax);
-        heat.gradient(HEAT_PALETTES[currentHeatPalette] || HEAT_PALETTES.classic);
-        heat.draw(0.22);
+        heat.gradient(HEAT_PALETTES[currentHeatPalette] || HEAT_PALETTES.warm);
+        heat.draw(currentHeatPalette === 'warm' ? 0.05 : 0.22);
 
         ctx.drawImage(offCanvas, 0, 0);
 
