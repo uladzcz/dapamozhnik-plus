@@ -14,6 +14,7 @@ import csv
 import io
 import json
 import re
+import urllib.request
 from typing import Optional, List
 from collections import Counter
 from fastapi import FastAPI, Query, HTTPException, UploadFile, File
@@ -1138,6 +1139,24 @@ async def compare_database(file: UploadFile = File(...)):
         "matched_surnames": matched_surnames,
         "clusters": sorted_clusters
     }
+
+@app.get("/api/proxy/tile")
+def proxy_tile(url: str = Query(..., description="URL of tile to proxy with CORS")):
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            content = resp.read()
+            content_type = resp.headers.get("content-type", "image/jpeg")
+            return Response(
+                content=content,
+                media_type=content_type,
+                headers={
+                    "Access-Control-Allow-Origin": "*",
+                    "Cache-Control": "public, max-age=86400"
+                }
+            )
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Tile proxy error: {str(e)}")
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 

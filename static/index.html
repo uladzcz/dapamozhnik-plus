@@ -74,6 +74,10 @@
     </div>
 
     <div class="flex items-center gap-2">
+      <button id="btnHeaderExportMap" class="flex items-center gap-1.5 text-xs bg-emerald-700 hover:bg-emerald-600 px-3 py-1.5 rounded-md font-medium transition shadow-sm">
+        <i class="ph ph-download-simple text-base"></i>
+        <span>Спампаваць мапу</span>
+      </button>
       <button id="btnOpenCompareModal" class="flex items-center gap-1.5 text-xs bg-emerald-700 hover:bg-emerald-600 px-3 py-1.5 rounded-md font-medium transition shadow-sm">
         <i class="ph ph-upload-simple text-base"></i>
         <span>Імпарт CSV базы</span>
@@ -682,10 +686,98 @@
         <button id="btnLayerHeat" class="layer-btn flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-slate-700 hover:bg-slate-100 transition">
           <i class="ph ph-flame text-sm"></i> <span>Цяпло (Heatmap)</span>
         </button>
-        <label class="flex items-center gap-1.5 ml-1.5 text-xs font-semibold text-slate-700 cursor-pointer select-none border-l border-slate-200 pl-2">
+        <button id="btnHeatSettingsToggle" class="hidden text-slate-600 hover:text-emerald-800 hover:bg-slate-100 px-2 py-1.5 rounded transition flex items-center gap-1 text-xs font-semibold" title="Рэгуляванне цеплавой карты (перапады, кантраст)">
+          <i class="ph ph-sliders text-sm text-amber-600"></i>
+          <span class="text-[11px] text-amber-800">Налады</span>
+        </button>
+        <label class="flex items-center gap-1.5 ml-1 text-xs font-semibold text-slate-700 cursor-pointer select-none border-l border-slate-200 pl-2">
           <input type="checkbox" id="chkAutoViewportSettlements" checked class="rounded text-emerald-700 focus:ring-emerald-500 w-3.5 h-3.5">
-          <span title="Аўтаматычна адлюстроўваць усе гістарычныя вёскі пры набліжэнні карты (зум ≥ 10)">📍 Вёскі пры набліжэнні</span>
+          <span title="Аўтаматычна адлюстроўваць усе гістарычныя вёскі пры набліжэнні карты (зум ≥ 10)">📍 Вёскі</span>
         </label>
+        <button id="btnOpenExportModal" class="flex items-center gap-1 ml-1 px-2.5 py-1.5 rounded-md bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition text-xs font-semibold" title="Спампаваць карту ўсёй Беларусі (PNG)">
+          <i class="ph ph-download-simple text-sm"></i>
+          <span>Спампаваць</span>
+        </button>
+      </div>
+
+      <!-- Heatmap Adjustment Floating Card -->
+      <div id="heatSettingsPanel" class="hidden absolute top-14 left-[54px] z-[400] bg-white/95 backdrop-blur shadow-xl border border-slate-200 rounded-xl p-3.5 text-xs w-80 space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+          <div class="flex items-center gap-2">
+            <div class="p-1 rounded bg-amber-100 text-amber-800">
+              <i class="ph ph-sliders text-sm"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-800 text-xs">Рэгуляванне цеплавой карты</h4>
+              <p class="text-[10px] text-slate-500">Кантраст і бачнасць перападаў</p>
+            </div>
+          </div>
+          <button id="btnCloseHeatSettings" class="text-slate-400 hover:text-slate-600 p-1">
+            <i class="ph ph-x text-sm"></i>
+          </button>
+        </div>
+
+        <!-- Presets -->
+        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+          <button id="presetHeatSharp" type="button" class="flex-1 py-1 px-1.5 rounded text-[10px] font-semibold transition text-slate-600 hover:text-slate-800" title="Рэзкія перапады і выразныя ачагі">
+            🎯 Ачагі
+          </button>
+          <button id="presetHeatDefault" type="button" class="flex-1 py-1 px-1.5 rounded text-[10px] font-semibold transition bg-white text-emerald-800 shadow-sm" title="Стандартны баланс">
+            ⚖️ Стандарт
+          </button>
+          <button id="presetHeatSmooth" type="button" class="flex-1 py-1 px-1.5 rounded text-[10px] font-semibold transition text-slate-600 hover:text-slate-800" title="Шырокія плыўныя арэалы">
+            🗺️ Плыўны
+          </button>
+        </div>
+
+        <!-- Slider: Contrast / Max intensity -->
+        <div class="space-y-1">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-700 font-medium">Кантраст (Адсячэнне пікаў):</span>
+            <span id="labelHeatMax" class="font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">0.70</span>
+          </div>
+          <input type="range" id="sliderHeatMax" min="0.20" max="2.20" step="0.05" value="0.70" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-700">
+          <div class="flex justify-between text-[9px] text-slate-400">
+            <span>Усе зоны чырванеюць</span>
+            <span>Толькі вострыя эпіцэнтры</span>
+          </div>
+        </div>
+
+        <!-- Slider: Radius -->
+        <div class="space-y-1">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-700 font-medium">Радыус ядра (Radius):</span>
+            <span id="labelHeatRadius" class="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">19 px</span>
+          </div>
+          <input type="range" id="sliderHeatRadius" min="8" max="38" step="1" value="19" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-700">
+          <div class="flex justify-between text-[9px] text-slate-400">
+            <span>Дакладныя вёскі</span>
+            <span>Шырокія плямы</span>
+          </div>
+        </div>
+
+        <!-- Slider: Blur -->
+        <div class="space-y-1">
+          <div class="flex items-center justify-between text-[11px]">
+            <span class="text-slate-700 font-medium">Размыццё (Blur / Пераход):</span>
+            <span id="labelHeatBlur" class="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">14 px</span>
+          </div>
+          <input type="range" id="sliderHeatBlur" min="4" max="28" step="1" value="14" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-700">
+          <div class="flex justify-between text-[9px] text-slate-400">
+            <span>Рэзкі перапад</span>
+            <span>Мяккі туман</span>
+          </div>
+        </div>
+
+        <!-- Palette Selector -->
+        <div class="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+          <span class="text-slate-600 font-medium">Палітра:</span>
+          <select id="selHeatPalette" class="py-1 px-2 bg-white border border-slate-300 rounded text-xs text-slate-700 focus:ring-1 focus:ring-emerald-600 outline-none">
+            <option value="classic">Класічная (Сіні → Жоўты → Чырвоны)</option>
+            <option value="spectral">Спектральная (Plasma / Агністая)</option>
+            <option value="thermal">Тэрмальная (Фіялетавы → Аранжавы)</option>
+          </select>
+        </div>
       </div>
     </main>
   </div>
@@ -723,6 +815,120 @@
           </div>
           <h5 class="text-xs font-bold uppercase tracking-wider text-slate-500">Кропкі перасячэння (Радавыя кластары):</h5>
           <div id="clusterList" class="space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Export Map of Entire Belarus Modal -->
+  <div id="exportModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-slate-200 flex flex-col max-h-[90vh]">
+      <!-- Header -->
+      <div class="bg-emerald-800 text-white px-5 py-3.5 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2 font-bold text-sm">
+          <i class="ph ph-download-simple text-xl text-emerald-300"></i>
+          <span>Спампаваць карту ўсёй Беларусі (PNG)</span>
+        </div>
+        <button id="btnCloseExportModal" class="text-emerald-200 hover:text-white text-lg">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="p-5 space-y-4 overflow-y-auto custom-scrollbar flex-1">
+        <p class="text-xs text-slate-600 leading-relaxed">
+          Экспартуецца <strong>ўся тэрыторыя Беларусі</strong> (ад Брэста да Хоцімска і ад Верхнядзвінска да Камарына), а не толькі тое, што трапіла ў акно экрана.
+        </p>
+
+        <!-- Current Layer Info Badge -->
+        <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs">
+          <span class="text-slate-500 font-medium">Актыўны слой для экспарту:</span>
+          <span id="exportActiveLayerBadge" class="font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">Кропкі паселішчаў</span>
+        </div>
+
+        <!-- Basemap Option -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-slate-700">Падложка (Базавая карта):</label>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <label class="flex items-center gap-2 p-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition bg-white has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50/50">
+              <input type="radio" name="exportBasemap" value="with" checked class="text-emerald-700 focus:ring-emerald-500">
+              <div>
+                <div class="font-semibold text-slate-800">З падложкай</div>
+                <div id="exportBasemapName" class="text-[10px] text-slate-500 truncate">OpenStreetMap</div>
+              </div>
+            </label>
+            <label class="flex items-center gap-2 p-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition bg-white has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50/50">
+              <input type="radio" name="exportBasemap" value="none" class="text-emerald-700 focus:ring-emerald-500">
+              <div>
+                <div class="font-semibold text-slate-800">Без падложкі</div>
+                <div class="text-[10px] text-slate-500">Празрысты PNG (толькі вектары)</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Zoom / Resolution Selector -->
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-slate-700">Маштаб і разрозненне:</label>
+          <div class="space-y-1.5 text-xs">
+            <label class="flex items-center justify-between p-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50/50">
+              <div class="flex items-center gap-2">
+                <input type="radio" name="exportZoom" value="current" checked class="text-emerald-700 focus:ring-emerald-500">
+                <span class="font-medium text-slate-800">Бягучы маштаб карты (<span id="exportCurrentZoomLabel">Зум 7</span>)</span>
+              </div>
+              <span id="exportCurrentResLabel" class="text-[11px] text-slate-500 font-medium">~910 × 760 px</span>
+            </label>
+            <label class="flex items-center justify-between p-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50/50">
+              <div class="flex items-center gap-2">
+                <input type="radio" name="exportZoom" value="7" class="text-emerald-700 focus:ring-emerald-500">
+                <span class="font-medium text-slate-800">Зум 7 (Аглядны)</span>
+              </div>
+              <span class="text-[11px] text-slate-500">~910 × 760 px • хутка (~1 MB)</span>
+            </label>
+            <label class="flex items-center justify-between p-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50/50">
+              <div class="flex items-center gap-2">
+                <input type="radio" name="exportZoom" value="8" class="text-emerald-700 focus:ring-emerald-500">
+                <span class="font-medium text-slate-800">Зум 8 (Рэгіянальны / Стандарт)</span>
+              </div>
+              <span class="text-[11px] text-slate-500">~1820 × 1530 px • выразна (~3 MB)</span>
+            </label>
+            <label class="flex items-center justify-between p-2.5 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition has-[:checked]:border-emerald-600 has-[:checked]:bg-emerald-50/50">
+              <div class="flex items-center gap-2">
+                <input type="radio" name="exportZoom" value="9" class="text-emerald-700 focus:ring-emerald-500">
+                <span class="font-medium text-slate-800">Зум 9 (Высокае разрозненне / Плакат)</span>
+              </div>
+              <span class="text-[11px] text-slate-500">~3640 × 3060 px • максімум дэталяў (~8 MB)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Add Legend / Watermark Checkbox -->
+        <div class="pt-2 border-t border-slate-200 flex items-center justify-between text-xs text-slate-700">
+          <label class="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" id="chkExportAddLegend" checked class="rounded text-emerald-700 focus:ring-emerald-500 w-3.5 h-3.5">
+            <span class="font-medium">Дадаць фірмовы подпіс, маштабную шкалу і легенду на выяву</span>
+          </label>
+        </div>
+
+        <!-- Progress bar & Status -->
+        <div id="exportProgressBox" class="hidden space-y-2 pt-2 border-t border-slate-200">
+          <div class="flex items-center justify-between text-xs">
+            <span id="exportProgressText" class="font-semibold text-emerald-800 flex items-center gap-1.5">
+              <i class="ph ph-spinner animate-spin"></i> Генерацыя карты...
+            </span>
+            <span id="exportProgressPct" class="font-bold text-slate-600">0%</span>
+          </div>
+          <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+            <div id="exportProgressBar" class="h-2 bg-emerald-600 rounded-full transition-all duration-150" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Generate Button -->
+        <div class="pt-2">
+          <button id="btnRunExportDownload" class="w-full py-2.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl text-xs font-bold transition shadow-md flex items-center justify-center gap-2">
+            <i class="ph ph-download-simple text-base"></i>
+            <span>Згенераваць і спампаваць PNG</span>
+          </button>
         </div>
       </div>
     </div>
@@ -893,6 +1099,116 @@
     const btnLayerClusters = document.getElementById('btnLayerClusters');
     const btnLayerDots = document.getElementById('btnLayerDots');
     const btnLayerHeat = document.getElementById('btnLayerHeat');
+    const btnHeatSettingsToggle = document.getElementById('btnHeatSettingsToggle');
+    const heatSettingsPanel = document.getElementById('heatSettingsPanel');
+    const btnCloseHeatSettings = document.getElementById('btnCloseHeatSettings');
+    const sliderHeatMax = document.getElementById('sliderHeatMax');
+    const labelHeatMax = document.getElementById('labelHeatMax');
+    const sliderHeatRadius = document.getElementById('sliderHeatRadius');
+    const labelHeatRadius = document.getElementById('labelHeatRadius');
+    const sliderHeatBlur = document.getElementById('sliderHeatBlur');
+    const labelHeatBlur = document.getElementById('labelHeatBlur');
+    const selHeatPalette = document.getElementById('selHeatPalette');
+    const presetHeatSharp = document.getElementById('presetHeatSharp');
+    const presetHeatDefault = document.getElementById('presetHeatDefault');
+    const presetHeatSmooth = document.getElementById('presetHeatSmooth');
+
+    // Heatmap dynamic tuning state
+    let currentHeatRadius = 19;
+    let currentHeatBlur = 14;
+    let currentHeatMax = 0.70;
+    let currentHeatPalette = 'classic';
+
+    const HEAT_PALETTES = {
+      classic: { 0.25: '#3b82f6', 0.5: '#10b981', 0.72: '#f59e0b', 0.92: '#ef4444' },
+      spectral: { 0.2: '#4338ca', 0.45: '#06b6d4', 0.65: '#eab308', 0.85: '#f97316', 0.98: '#dc2626' },
+      thermal: { 0.2: '#0d0887', 0.45: '#7e03a8', 0.7: '#cc4778', 0.88: '#f89540', 0.98: '#f0f921' }
+    };
+
+    function applyHeatmapSettings() {
+      if (!heatLayer) return;
+      heatLayer.setOptions({
+        radius: currentHeatRadius,
+        blur: currentHeatBlur,
+        max: currentHeatMax,
+        gradient: HEAT_PALETTES[currentHeatPalette] || HEAT_PALETTES.classic,
+        minOpacity: 0.22
+      });
+      if (typeof heatLayer.redraw === 'function') heatLayer.redraw();
+      else if (typeof heatLayer._redraw === 'function') heatLayer._redraw();
+    }
+
+    if (btnHeatSettingsToggle && heatSettingsPanel) {
+      btnHeatSettingsToggle.onclick = (e) => {
+        e.stopPropagation();
+        heatSettingsPanel.classList.toggle('hidden');
+      };
+      if (btnCloseHeatSettings) {
+        btnCloseHeatSettings.onclick = () => heatSettingsPanel.classList.add('hidden');
+      }
+
+      sliderHeatMax.oninput = (e) => {
+        currentHeatMax = parseFloat(e.target.value);
+        labelHeatMax.innerText = currentHeatMax.toFixed(2);
+        applyHeatmapSettings();
+      };
+
+      sliderHeatRadius.oninput = (e) => {
+        currentHeatRadius = parseInt(e.target.value, 10);
+        labelHeatRadius.innerText = `${currentHeatRadius} px`;
+        applyHeatmapSettings();
+      };
+
+      sliderHeatBlur.oninput = (e) => {
+        currentHeatBlur = parseInt(e.target.value, 10);
+        labelHeatBlur.innerText = `${currentHeatBlur} px`;
+        applyHeatmapSettings();
+      };
+
+      selHeatPalette.onchange = (e) => {
+        currentHeatPalette = e.target.value;
+        applyHeatmapSettings();
+      };
+
+      function updatePresetButtons(activeBtn) {
+        [presetHeatSharp, presetHeatDefault, presetHeatSmooth].forEach(b => {
+          if (!b) return;
+          b.classList.remove('bg-white', 'text-emerald-800', 'shadow-sm');
+          b.classList.add('text-slate-600');
+        });
+        if (activeBtn) {
+          activeBtn.classList.add('bg-white', 'text-emerald-800', 'shadow-sm');
+          activeBtn.classList.remove('text-slate-600');
+        }
+      }
+
+      presetHeatSharp.onclick = () => {
+        currentHeatMax = 1.35; sliderHeatMax.value = 1.35; labelHeatMax.innerText = "1.35";
+        currentHeatRadius = 12; sliderHeatRadius.value = 12; labelHeatRadius.innerText = "12 px";
+        currentHeatBlur = 8; sliderHeatBlur.value = 8; labelHeatBlur.innerText = "8 px";
+        currentHeatPalette = 'spectral'; selHeatPalette.value = 'spectral';
+        updatePresetButtons(presetHeatSharp);
+        applyHeatmapSettings();
+      };
+
+      presetHeatDefault.onclick = () => {
+        currentHeatMax = 0.70; sliderHeatMax.value = 0.70; labelHeatMax.innerText = "0.70";
+        currentHeatRadius = 19; sliderHeatRadius.value = 19; labelHeatRadius.innerText = "19 px";
+        currentHeatBlur = 14; sliderHeatBlur.value = 14; labelHeatBlur.innerText = "14 px";
+        currentHeatPalette = 'classic'; selHeatPalette.value = 'classic';
+        updatePresetButtons(presetHeatDefault);
+        applyHeatmapSettings();
+      };
+
+      presetHeatSmooth.onclick = () => {
+        currentHeatMax = 0.50; sliderHeatMax.value = 0.50; labelHeatMax.innerText = "0.50";
+        currentHeatRadius = 25; sliderHeatRadius.value = 25; labelHeatRadius.innerText = "25 px";
+        currentHeatBlur = 18; sliderHeatBlur.value = 18; labelHeatBlur.innerText = "18 px";
+        currentHeatPalette = 'classic'; selHeatPalette.value = 'classic';
+        updatePresetButtons(presetHeatSmooth);
+        applyHeatmapSettings();
+      };
+    }
 
     function setLayerMode(mode) {
       currentMapMode = mode;
@@ -904,12 +1220,17 @@
       if (mode === 'clusters') {
         btnLayerClusters.classList.add('active', 'bg-emerald-800', 'text-white', 'shadow-sm');
         btnLayerClusters.classList.remove('text-slate-700');
+        btnHeatSettingsToggle?.classList.add('hidden');
+        heatSettingsPanel?.classList.add('hidden');
       } else if (mode === 'dots') {
         btnLayerDots.classList.add('active', 'bg-emerald-800', 'text-white', 'shadow-sm');
         btnLayerDots.classList.remove('text-slate-700');
+        btnHeatSettingsToggle?.classList.add('hidden');
+        heatSettingsPanel?.classList.add('hidden');
       } else if (mode === 'heat') {
         btnLayerHeat.classList.add('active', 'bg-emerald-800', 'text-white', 'shadow-sm');
         btnLayerHeat.classList.remove('text-slate-700');
+        btnHeatSettingsToggle?.classList.remove('hidden');
       }
 
       renderPointsOnMap(currentActivePoints, mode);
@@ -986,11 +1307,12 @@
       } else if (mode === 'heat') {
         const heatData = validPoints.map(p => [p.lat, p.lon, 0.7]);
         heatLayer = L.heatLayer(heatData, {
-          radius: 19,
-          blur: 14,
+          radius: currentHeatRadius,
+          blur: currentHeatBlur,
+          max: currentHeatMax,
           maxZoom: 13,
           minOpacity: 0.22,
-          gradient: { 0.25: '#3b82f6', 0.5: '#10b981', 0.72: '#f59e0b', 0.92: '#ef4444' }
+          gradient: HEAT_PALETTES[currentHeatPalette] || HEAT_PALETTES.classic
         });
         heatLayer.addTo(map);
         validPoints.forEach(p => bounds.push([p.lat, p.lon]));
@@ -2637,6 +2959,477 @@
       });
 
       renderPointsOnMap(data.clusters || []);
+    }
+    // -------------------------------------------------------------
+    // Full-Belarus Map Export / Download Engine
+    // -------------------------------------------------------------
+    const exportModal = document.getElementById('exportModal');
+    const btnOpenExportModal = document.getElementById('btnOpenExportModal');
+    const btnHeaderExportMap = document.getElementById('btnHeaderExportMap');
+    const btnCloseExportModal = document.getElementById('btnCloseExportModal');
+    const btnRunExportDownload = document.getElementById('btnRunExportDownload');
+    const exportActiveLayerBadge = document.getElementById('exportActiveLayerBadge');
+    const exportBasemapName = document.getElementById('exportBasemapName');
+    const exportCurrentZoomLabel = document.getElementById('exportCurrentZoomLabel');
+    const exportCurrentResLabel = document.getElementById('exportCurrentResLabel');
+    const exportProgressBox = document.getElementById('exportProgressBox');
+    const exportProgressBar = document.getElementById('exportProgressBar');
+    const exportProgressText = document.getElementById('exportProgressText');
+    const exportProgressPct = document.getElementById('exportProgressPct');
+
+    function getActiveBaseLayer() {
+      for (const [name, layer] of Object.entries(baseMaps)) {
+        if (map.hasLayer(layer)) {
+          return { name, layer, url: layer._url };
+        }
+      }
+      return { name: "OpenStreetMap (Светлая)", layer: osmLayer, url: osmLayer._url };
+    }
+
+    function openExportModal() {
+      if (!exportModal) return;
+
+      const isSuffixComp = !panelSuffix.classList.contains('hidden') && 
+                           !document.getElementById('suffixCompContainer')?.classList.contains('hidden') && 
+                           currentCompData;
+
+      if (isSuffixComp) {
+        exportActiveLayerBadge.innerText = (currentCompVisMode === 'hex') 
+          ? 'Спаборніцтва: Плітка (Гексагоны)' 
+          : 'Спаборніцтва: Раённыя кругі';
+      } else if (currentMapMode === 'heat') {
+        exportActiveLayerBadge.innerText = `Цяпло (Heatmap • r:${currentHeatRadius} max:${currentHeatMax})`;
+      } else if (currentMapMode === 'dots') {
+        exportActiveLayerBadge.innerText = `Кропкі (${totalPointsCounter.innerText} вёсак)`;
+      } else {
+        exportActiveLayerBadge.innerText = `Кропкі і кластары (${totalPointsCounter.innerText} вёсак)`;
+      }
+
+      const activeBase = getActiveBaseLayer();
+      if (exportBasemapName) exportBasemapName.innerText = activeBase.name;
+
+      const currZ = Math.max(7, Math.min(10, map.getZoom()));
+      if (exportCurrentZoomLabel) exportCurrentZoomLabel.innerText = `Зум ${currZ}`;
+
+      const resMap = {
+        7: '~910 × 760 px',
+        8: '~1820 × 1530 px',
+        9: '~3640 × 3060 px',
+        10: '~7280 × 6120 px'
+      };
+      if (exportCurrentResLabel) exportCurrentResLabel.innerText = resMap[currZ] || `~${Math.round(256 * Math.pow(2, currZ) * 0.027)} px`;
+
+      exportProgressBox?.classList.add('hidden');
+      exportModal.classList.remove('hidden');
+    }
+
+    if (btnOpenExportModal) btnOpenExportModal.onclick = openExportModal;
+    if (btnHeaderExportMap) btnHeaderExportMap.onclick = openExportModal;
+    if (btnCloseExportModal) btnCloseExportModal.onclick = () => exportModal?.classList.add('hidden');
+
+    if (exportModal) {
+      exportModal.onclick = (e) => {
+        if (e.target === exportModal) exportModal.classList.add('hidden');
+      };
+    }
+
+    function getTileUrlForCoords(layer, tx, ty, tz) {
+      let url = layer._url || '';
+      return url
+        .replace('{z}', tz)
+        .replace('{x}', tx)
+        .replace('{y}', ty)
+        .replace('{s}', 'a');
+    }
+
+    function loadImageAsync(url) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = (e) => reject(e);
+        img.src = url;
+      });
+    }
+
+    function drawExportPoints(ctx, points, zoom, minX, minY) {
+      const ptR = zoom <= 7 ? 2.5 : (zoom === 8 ? 3.5 : 4.5);
+      (points || []).filter(p => p.lat && p.lon).forEach(p => {
+        const pt = map.project([p.lat, p.lon], zoom);
+        const cx = pt.x - minX;
+        const cy = pt.y - minY;
+        const col = p.color || '#059669';
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, ptR, 0, 2 * Math.PI);
+        ctx.fillStyle = col;
+        ctx.globalAlpha = 0.85;
+        ctx.fill();
+
+        ctx.lineWidth = 0.8;
+        ctx.strokeStyle = '#ffffff';
+        ctx.globalAlpha = 0.95;
+        ctx.stroke();
+      });
+      ctx.globalAlpha = 1.0;
+    }
+
+    function drawRoundedBox(ctx, x, y, w, h, r) {
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, r);
+        ctx.closePath();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.arcTo(x + w, y, x + w, y + r, r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+        ctx.lineTo(x + r, y + h);
+        ctx.arcTo(x, y + h, x, y + h - r, r);
+        ctx.lineTo(x, y + r);
+        ctx.arcTo(x, y, x + r, y, r);
+        ctx.closePath();
+      }
+    }
+
+    function drawExportLegendCard(ctx, W, H, zoom, isSuffixComp) {
+      const scaleMultiplier = Math.max(1, zoom === 9 ? 1.6 : (zoom === 8 ? 1.2 : 1.0));
+      const cardW = Math.round(340 * scaleMultiplier);
+      const cardH = Math.round(110 * scaleMultiplier);
+      const cardX = Math.round(20 * scaleMultiplier);
+      const cardY = H - cardH - Math.round(20 * scaleMultiplier);
+
+      ctx.save();
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+      drawRoundedBox(ctx, cardX, cardY, cardW, cardH, 10 * scaleMultiplier);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      const pad = Math.round(14 * scaleMultiplier);
+      let curY = cardY + pad + Math.round(12 * scaleMultiplier);
+      ctx.font = `bold ${Math.round(15 * scaleMultiplier)}px sans-serif`;
+      ctx.fillStyle = '#34d399';
+      ctx.fillText('Дапаможнік+', cardX + pad, curY);
+
+      ctx.font = `${Math.round(10 * scaleMultiplier)}px sans-serif`;
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(' • Гістарычныя паселішчы і прозвішчы', cardX + pad + Math.round(92 * scaleMultiplier), curY);
+
+      curY += Math.round(22 * scaleMultiplier);
+      ctx.font = `bold ${Math.round(12 * scaleMultiplier)}px sans-serif`;
+      ctx.fillStyle = '#ffffff';
+
+      let subjectText = 'Геаграфія паселішчаў і прозвішчаў Беларусі';
+      if (isSuffixComp) {
+        subjectText = `Спаборніцтва: ${compActiveGroups.slice(0, 3).join(' vs ')}`;
+      } else if (currentSurname) {
+        subjectText = `Арэал: ${currentSurname.surname_be} (${currentSurname.total_occurrences} вёсак)`;
+      } else if (document.getElementById('suffixSingleContainer') && !document.getElementById('suffixSingleContainer').classList.contains('hidden') && !panelSuffix.classList.contains('hidden')) {
+        const curSuff = document.querySelector('.suffix-btn.active')?.dataset.suffix || 'віч,іч';
+        subjectText = `Фіналі: -${curSuff} (${totalPointsCounter.innerText} вёсак)`;
+      }
+      ctx.fillText(subjectText, cardX + pad, curY);
+
+      curY += Math.round(20 * scaleMultiplier);
+      if (isSuffixComp && currentCompData && currentCompData.groups) {
+        let badgeX = cardX + pad;
+        currentCompData.groups.slice(0, 3).forEach((g) => {
+          ctx.beginPath();
+          ctx.arc(badgeX + Math.round(4 * scaleMultiplier), curY - Math.round(4 * scaleMultiplier), Math.round(4 * scaleMultiplier), 0, 2 * Math.PI);
+          ctx.fillStyle = g.color;
+          ctx.fill();
+
+          ctx.font = `${Math.round(10 * scaleMultiplier)}px sans-serif`;
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillText(g.label, badgeX + Math.round(11 * scaleMultiplier), curY);
+          badgeX += ctx.measureText(g.label).width + Math.round(20 * scaleMultiplier);
+        });
+      } else {
+        ctx.font = `${Math.round(10 * scaleMultiplier)}px sans-serif`;
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText(`Адлюстравана: ${totalPointsCounter.innerText} кропак на мапе`, cardX + pad, curY);
+      }
+
+      curY += Math.round(18 * scaleMultiplier);
+      ctx.font = `${Math.round(9 * scaleMultiplier)}px sans-serif`;
+      ctx.fillStyle = '#64748b';
+      ctx.fillText(`Беларусь (23.0°–33.0°E, 51.1°–56.4°N) • Зум ${zoom} • ${new Date().toLocaleDateString('be-BY')}`, cardX + pad, curY);
+
+      ctx.restore();
+    }
+
+    async function runExportBelarusMap({ withBasemap, zoom, addLegend }) {
+      function setProgress(pct, msg) {
+        if (exportProgressBar) exportProgressBar.style.width = `${pct}%`;
+        if (exportProgressPct) exportProgressPct.innerText = `${Math.round(pct)}%`;
+        if (exportProgressText && msg) {
+          exportProgressText.innerHTML = `<i class="ph ph-spinner animate-spin"></i> ${msg}`;
+        }
+      }
+
+      setProgress(5, 'Вылічэнне межаў усёй тэрыторыі Беларусі...');
+
+      // Full Belarus Bounding Box: 23.00°E to 33.00°E, 51.10°N to 56.40°N
+      const minLon = 23.00, maxLon = 33.00;
+      const minLat = 51.10, maxLat = 56.40;
+
+      const nwPoint = map.project([maxLat, minLon], zoom);
+      const sePoint = map.project([minLat, maxLon], zoom);
+
+      const minX = Math.floor(nwPoint.x);
+      const minY = Math.floor(nwPoint.y);
+      const maxX = Math.ceil(sePoint.x);
+      const maxY = Math.ceil(sePoint.y);
+
+      const W = maxX - minX;
+      const H = maxY - minY;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext('2d');
+
+      if (withBasemap) {
+        const activeBase = getActiveBaseLayer();
+        const activeLayer = activeBase.layer;
+
+        let layerZoom = zoom;
+        if (activeLayer.options?.minZoom && layerZoom < activeLayer.options.minZoom) {
+          layerZoom = activeLayer.options.minZoom;
+        }
+        if (activeLayer.options?.maxZoom && layerZoom > activeLayer.options.maxZoom) {
+          layerZoom = activeLayer.options.maxZoom;
+        }
+
+        const minTileX = Math.floor(minX / 256);
+        const maxTileX = Math.floor(maxX / 256);
+        const minTileY = Math.floor(minY / 256);
+        const maxTileY = Math.floor(maxY / 256);
+
+        const tiles = [];
+        for (let ty = minTileY; ty <= maxTileY; ty++) {
+          for (let tx = minTileX; tx <= maxTileX; tx++) {
+            tiles.push({ tx, ty });
+          }
+        }
+
+        const totalTiles = tiles.length;
+        let loadedCount = 0;
+        setProgress(10, `Загрузка тайлаў падложкі (0/${totalTiles})...`);
+
+        const BATCH_SIZE = 8;
+        for (let i = 0; i < tiles.length; i += BATCH_SIZE) {
+          const batch = tiles.slice(i, i + BATCH_SIZE);
+          await Promise.all(batch.map(async ({ tx, ty }) => {
+            try {
+              let tileUrl = getTileUrlForCoords(activeLayer, tx, ty, layerZoom);
+              if (tileUrl.includes('host2517117152.of.by') || tileUrl.includes('orda.of.by')) {
+                tileUrl = `/api/proxy/tile?url=${encodeURIComponent(tileUrl)}`;
+              }
+              const img = await loadImageAsync(tileUrl);
+              const dx = tx * 256 - minX;
+              const dy = ty * 256 - minY;
+              if (activeBase.name.includes('OpenStreetMap')) {
+                ctx.filter = 'brightness(1.12) contrast(0.85) saturate(0.45)';
+              }
+              ctx.drawImage(img, dx, dy, 256, 256);
+              ctx.filter = 'none';
+            } catch (err) {
+              // Gracefully continue on edge missing tiles
+            } finally {
+              loadedCount++;
+              const pct = 10 + (loadedCount / totalTiles) * 55;
+              setProgress(pct, `Загрузка тайлаў падложкі (${loadedCount}/${totalTiles})...`);
+            }
+          }));
+        }
+      } else {
+        ctx.clearRect(0, 0, W, H);
+        setProgress(50, 'Падрыхтоўка празрыстага палатна...');
+      }
+
+      // Draw vectors / analytical layer
+      setProgress(70, 'Маляванне аналітычнага слоя на мапе...');
+
+      const isSuffixComp = !panelSuffix.classList.contains('hidden') && 
+                           !document.getElementById('suffixCompContainer')?.classList.contains('hidden') && 
+                           currentCompData;
+
+      if (isSuffixComp) {
+        if (currentCompVisMode === 'hex') {
+          const hexFeatures = (currentCompData.hex_features && currentCompData.hex_features.length > 0)
+            ? currentCompData.hex_features
+            : buildHexBins(currentCompData.points, currentCompData.groups, 14.5);
+
+          hexFeatures.forEach(h => {
+            const isTie = h.margin < 0.05;
+            const topColor = h.top.color;
+            const fillOpacity = isTie ? 0.0 : Math.max(0.12, Math.min(0.85, h.margin * 0.85));
+            const strokeColor = isTie ? '#94a3b8' : topColor;
+            const weight = isTie ? 1.5 : 1.0;
+
+            ctx.beginPath();
+            h.vertices.forEach(([vLat, vLon], idx) => {
+              const pt = map.project([vLat, vLon], zoom);
+              const vx = pt.x - minX;
+              const vy = pt.y - minY;
+              if (idx === 0) ctx.moveTo(vx, vy);
+              else ctx.lineTo(vx, vy);
+            });
+            ctx.closePath();
+
+            if (!isTie) {
+              ctx.fillStyle = topColor;
+              ctx.globalAlpha = fillOpacity;
+              ctx.fill();
+            }
+
+            ctx.globalAlpha = 1.0;
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = weight;
+            if (isTie) ctx.setLineDash([3, 3]); else ctx.setLineDash([]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          });
+
+          if (compShowPoints) {
+            drawExportPoints(ctx, currentCompData.points, zoom, minX, minY);
+          }
+
+        } else {
+          // Circles mode
+          currentCompData.districts_dominance.forEach(d => {
+            if (!d.lat || !d.lon) return;
+            const pt = map.project([d.lat, d.lon], zoom);
+            const cx = pt.x - minX;
+            const cy = pt.y - minY;
+            const latRad = d.lat * Math.PI / 180;
+            const metersPerPixel = 156543.03392 * Math.cos(latRad) / Math.pow(2, zoom);
+            const rPx = 13500 / metersPerPixel;
+
+            const isTie = d.is_tie;
+            const hasTieColors = isTie && d.tie_colors && d.tie_colors.length >= 2;
+            const color = d.dominant_color;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(cx, cy, rPx, 0, 2 * Math.PI);
+            ctx.closePath();
+
+            if (isTie && hasTieColors) {
+              ctx.clip();
+              const c1 = d.tie_colors[0];
+              const c2 = d.tie_colors[1];
+              const stripeW = Math.max(4, Math.round(6 * Math.pow(2, zoom - 7)));
+              const step = stripeW * 2;
+              for (let x = -rPx * 2; x <= rPx * 2; x += step) {
+                ctx.fillStyle = c1;
+                ctx.fillRect(cx + x, cy - rPx, stripeW, rPx * 2);
+                ctx.fillStyle = c2;
+                ctx.fillRect(cx + x + stripeW, cy - rPx, stripeW, rPx * 2);
+              }
+              ctx.restore();
+
+              ctx.beginPath();
+              ctx.arc(cx, cy, rPx, 0, 2 * Math.PI);
+              ctx.strokeStyle = '#334155';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            } else {
+              const fillOpacity = Math.min(0.60, 0.20 + (d.margin / 100) * 0.45);
+              ctx.fillStyle = color;
+              ctx.globalAlpha = fillOpacity;
+              ctx.fill();
+              ctx.globalAlpha = 1.0;
+              ctx.strokeStyle = color;
+              ctx.lineWidth = 2;
+              ctx.stroke();
+              ctx.restore();
+            }
+          });
+
+          if (compShowPoints) {
+            drawExportPoints(ctx, currentCompData.points, zoom, minX, minY);
+          }
+        }
+
+      } else if (currentMapMode === 'heat') {
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = W;
+        offCanvas.height = H;
+        const heat = simpleheat(offCanvas);
+
+        const r = Math.round(currentHeatRadius * Math.pow(2, zoom - 7));
+        const b = Math.round(currentHeatBlur * Math.pow(2, zoom - 7));
+
+        const heatData = (currentActivePoints || []).filter(p => p.lat && p.lon).map(p => {
+          const pt = map.project([p.lat, p.lon], zoom);
+          return [Math.round(pt.x - minX), Math.round(pt.y - minY), 0.7];
+        });
+
+        heat.data(heatData);
+        heat.radius(r, b);
+        heat.max(currentHeatMax);
+        heat.gradient(HEAT_PALETTES[currentHeatPalette] || HEAT_PALETTES.classic);
+        heat.draw(0.22);
+
+        ctx.drawImage(offCanvas, 0, 0);
+
+      } else {
+        // Dots / Clusters
+        drawExportPoints(ctx, currentActivePoints, zoom, minX, minY);
+      }
+
+      if (addLegend) {
+        setProgress(85, 'Даданне фірмовага подпісу і легенды...');
+        drawExportLegendCard(ctx, W, H, zoom, isSuffixComp);
+      }
+
+      setProgress(95, 'Фарміраванне выніковага PNG...');
+
+      canvas.toBlob((blob) => {
+        if (!blob) throw new Error('Не ўдалося сфарміраваць PNG');
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const suffixPart = currentSurname ? `_${currentSurname.slug || currentSurname.surname_be}` : (isSuffixComp ? '_competition' : '');
+        a.download = `dapamozhnik_belarus_zoom${zoom}${suffixPart}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        setProgress(100, 'Мапа паспяхова спампавана!');
+        setTimeout(() => {
+          exportModal.classList.add('hidden');
+          exportProgressBox?.classList.add('hidden');
+          btnRunExportDownload.disabled = false;
+        }, 1200);
+      }, 'image/png');
+    }
+
+    if (btnRunExportDownload) {
+      btnRunExportDownload.onclick = async () => {
+        try {
+          btnRunExportDownload.disabled = true;
+          exportProgressBox?.classList.remove('hidden');
+
+          const withBasemap = (document.querySelector('input[name="exportBasemap"]:checked')?.value === 'with');
+          const zoomChoice = document.querySelector('input[name="exportZoom"]:checked')?.value || 'current';
+          let targetZoom = (zoomChoice === 'current') ? Math.max(7, Math.min(10, map.getZoom())) : parseInt(zoomChoice, 10);
+          const addLegend = document.getElementById('chkExportAddLegend')?.checked ?? true;
+
+          await runExportBelarusMap({ withBasemap, zoom: targetZoom, addLegend });
+        } catch (err) {
+          console.error('Export error:', err);
+          alert('Памылка пры экспарце карты: ' + (err.message || err));
+          btnRunExportDownload.disabled = false;
+        }
+      };
     }
   </script>
 </body>
