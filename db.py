@@ -35,6 +35,7 @@ def py_fuzzy_norm(s: Optional[str]) -> str:
     if not s:
         return ""
     t = py_norm(s)
+    t = t.replace('міер', 'мер').replace('миер', 'мер')
     t = t.replace('о', 'а')
     t = t.replace('ы', 'і')
     t = t.replace('я', 'е')

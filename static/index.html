@@ -711,7 +711,7 @@
       </div>
 
       <!-- Heatmap Adjustment Floating Card -->
-      <div id="heatSettingsPanel" class="hidden absolute top-14 left-[54px] z-[400] bg-white/95 backdrop-blur shadow-xl border border-slate-200 rounded-xl p-3.5 text-xs w-80 space-y-3">
+      <div id="heatSettingsPanel" class="hidden absolute top-14 left-[54px] z-[400] bg-white/95 backdrop-blur shadow-xl border border-slate-200 rounded-xl p-3.5 text-xs w-[340px] space-y-3">
         <div class="flex items-center justify-between border-b border-slate-100 pb-2">
           <div class="flex items-center gap-2">
             <div class="p-1 rounded bg-amber-100 text-amber-800">
@@ -729,13 +729,16 @@
 
         <!-- Presets -->
         <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
-          <button id="presetHeatSharp" type="button" class="flex-1 py-1 px-1.5 rounded text-[10px] font-semibold transition text-slate-600 hover:text-slate-800" title="Рэзкія перапады і выразныя ачагі">
+          <button id="presetHeatSharp" type="button" class="flex-1 py-1 px-1 rounded text-[10px] font-semibold transition text-slate-600 hover:text-slate-800 text-center" title="Рэзкія перапады і выразныя ачагі (Max: 1.35, R: 12px)">
             🎯 Ачагі
           </button>
-          <button id="presetHeatDefault" type="button" class="flex-1 py-1 px-1.5 rounded text-[10px] font-semibold transition bg-white text-emerald-800 shadow-sm" title="Стандартны баланс">
+          <button id="presetHeatDefault" type="button" class="flex-1 py-1 px-1 rounded text-[10px] font-semibold transition bg-white text-emerald-800 shadow-sm text-center" title="Збалансаваны стандарт без перацямнення (Max: 1.05, R: 15px)">
             ⚖️ Стандарт
           </button>
-          <button id="presetHeatSmooth" type="button" class="flex-1 py-1 px-1.5 rounded text-[10px] font-semibold transition text-slate-600 hover:text-slate-800" title="Шырокія плыўныя арэалы">
+          <button id="presetHeatRich" type="button" class="flex-1 py-1 px-1 rounded text-[10px] font-semibold transition text-slate-600 hover:text-slate-800 text-center" title="Насычанае і шчыльнае цяпло (Max: 0.70, R: 19px)">
+            🔥 Насычаны
+          </button>
+          <button id="presetHeatSmooth" type="button" class="flex-1 py-1 px-1 rounded text-[10px] font-semibold transition text-slate-600 hover:text-slate-800 text-center" title="Шырокія плыўныя арэалы (Max: 0.50, R: 25px)">
             🗺️ Плыўны
           </button>
         </div>
@@ -749,14 +752,14 @@
                 <i class="ph ph-question text-xs"></i>
                 <span class="pointer-events-none absolute left-0 bottom-full mb-1.5 w-64 p-2.5 bg-slate-900/95 backdrop-blur text-white text-[10px] leading-relaxed rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-[500] font-normal border border-slate-700">
                   <strong class="text-amber-300 block mb-0.5 font-bold">Навошта гэты параметр?</strong>
-                  Вызначае парог шчыльнасці для выхаду ў чырвоны колер. Калі прозвішча ці фіналь сустракаецца ў тысяч вёсак (як <em>-віч</em> ці <em>-скі</em>), нізкі парог залівае ўсю краіну аднолькавай чырванню. Павелічэнне кантрасту (1.2–1.8) адсякае слабы фонавы шум і пакідае цёплае цяпло <strong>толькі ў сапраўдных родавых гнёздах і эпіцэнтры</strong>.
+                  Вызначае парог шчыльнасці для выхаду ў чырвоны колер. Калі прозвішча ці фіналь сустракаецца ў тысяч вёсак (як <em>-віч</em> ці <em>-скі</em>), нізкі парог залівае ўсю краіну аднолькавай чырванню. Павелічэнне кантрасту (1.0–1.4) адсякае слабы фонавы шум і пакідае цёплае цяпло <strong>толькі ў сапраўдных родавых гнёздах і эпіцэнтры</strong>.
                   <span class="absolute left-2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-900"></span>
                 </span>
               </span>
             </div>
-            <span id="labelHeatMax" class="font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">0.70</span>
+            <span id="labelHeatMax" class="font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">1.05</span>
           </div>
-          <input type="range" id="sliderHeatMax" min="0.20" max="2.20" step="0.05" value="0.70" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-700">
+          <input type="range" id="sliderHeatMax" min="0.20" max="2.20" step="0.05" value="1.05" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-700">
           <div class="flex justify-between text-[9px] text-slate-400">
             <span>Усе зоны чырванеюць</span>
             <span>Толькі вострыя эпіцэнтры</span>
@@ -777,9 +780,9 @@
                 </span>
               </span>
             </div>
-            <span id="labelHeatRadius" class="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">19 px</span>
+            <span id="labelHeatRadius" class="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">15 px</span>
           </div>
-          <input type="range" id="sliderHeatRadius" min="8" max="38" step="1" value="19" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-700">
+          <input type="range" id="sliderHeatRadius" min="8" max="38" step="1" value="15" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-700">
           <div class="flex justify-between text-[9px] text-slate-400">
             <span>Дакладныя вёскі</span>
             <span>Шырокія плямы</span>
@@ -800,9 +803,9 @@
                 </span>
               </span>
             </div>
-            <span id="labelHeatBlur" class="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">14 px</span>
+            <span id="labelHeatBlur" class="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded">10 px</span>
           </div>
-          <input type="range" id="sliderHeatBlur" min="4" max="28" step="1" value="14" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-700">
+          <input type="range" id="sliderHeatBlur" min="4" max="28" step="1" value="10" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-700">
           <div class="flex justify-between text-[9px] text-slate-400">
             <span>Рэзкі перапад</span>
             <span>Мяккі туман</span>
@@ -1170,12 +1173,13 @@
     const selHeatPalette = document.getElementById('selHeatPalette');
     const presetHeatSharp = document.getElementById('presetHeatSharp');
     const presetHeatDefault = document.getElementById('presetHeatDefault');
+    const presetHeatRich = document.getElementById('presetHeatRich');
     const presetHeatSmooth = document.getElementById('presetHeatSmooth');
 
     // Heatmap dynamic tuning state (Default is warm / flame starting softly without blue haze)
-    let currentHeatRadius = 19;
-    let currentHeatBlur = 14;
-    let currentHeatMax = 0.70;
+    let currentHeatRadius = 15;
+    let currentHeatBlur = 10;
+    let currentHeatMax = 1.05;
     let currentHeatPalette = 'warm';
 
     const HEAT_PALETTES = {
@@ -1234,18 +1238,21 @@
       sliderHeatMax.oninput = (e) => {
         currentHeatMax = parseFloat(e.target.value);
         labelHeatMax.innerText = currentHeatMax.toFixed(2);
+        updatePresetButtons(null);
         applyHeatmapSettings();
       };
 
       sliderHeatRadius.oninput = (e) => {
         currentHeatRadius = parseInt(e.target.value, 10);
         labelHeatRadius.innerText = `${currentHeatRadius} px`;
+        updatePresetButtons(null);
         applyHeatmapSettings();
       };
 
       sliderHeatBlur.oninput = (e) => {
         currentHeatBlur = parseInt(e.target.value, 10);
         labelHeatBlur.innerText = `${currentHeatBlur} px`;
+        updatePresetButtons(null);
         applyHeatmapSettings();
       };
 
@@ -1255,7 +1262,7 @@
       };
 
       function updatePresetButtons(activeBtn) {
-        [presetHeatSharp, presetHeatDefault, presetHeatSmooth].forEach(b => {
+        [presetHeatSharp, presetHeatDefault, presetHeatRich, presetHeatSmooth].forEach(b => {
           if (!b) return;
           b.classList.remove('bg-white', 'text-emerald-800', 'shadow-sm');
           b.classList.add('text-slate-600');
@@ -1276,11 +1283,20 @@
       };
 
       presetHeatDefault.onclick = () => {
+        currentHeatMax = 1.05; sliderHeatMax.value = 1.05; labelHeatMax.innerText = "1.05";
+        currentHeatRadius = 15; sliderHeatRadius.value = 15; labelHeatRadius.innerText = "15 px";
+        currentHeatBlur = 10; sliderHeatBlur.value = 10; labelHeatBlur.innerText = "10 px";
+        currentHeatPalette = 'warm'; selHeatPalette.value = 'warm';
+        updatePresetButtons(presetHeatDefault);
+        applyHeatmapSettings();
+      };
+
+      presetHeatRich.onclick = () => {
         currentHeatMax = 0.70; sliderHeatMax.value = 0.70; labelHeatMax.innerText = "0.70";
         currentHeatRadius = 19; sliderHeatRadius.value = 19; labelHeatRadius.innerText = "19 px";
         currentHeatBlur = 14; sliderHeatBlur.value = 14; labelHeatBlur.innerText = "14 px";
         currentHeatPalette = 'warm'; selHeatPalette.value = 'warm';
-        updatePresetButtons(presetHeatDefault);
+        updatePresetButtons(presetHeatRich);
         applyHeatmapSettings();
       };
 
