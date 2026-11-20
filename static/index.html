@@ -129,21 +129,81 @@
             </button>
           </div>
 
-          <!-- Filter Pills & All Fields Checkbox -->
-          <div class="flex items-center justify-between text-xs">
-            <div class="flex items-center gap-1.5">
-              <button data-type="all" class="filter-btn active bg-emerald-800 text-white px-3 py-1 rounded-full font-medium transition">Усе</button>
-              <button data-type="settlements" class="filter-btn bg-white border border-slate-300 text-slate-600 px-3 py-1 rounded-full hover:bg-slate-100 transition">Паселішчы</button>
-              <button data-type="surnames" class="filter-btn bg-white border border-slate-300 text-slate-600 px-3 py-1 rounded-full hover:bg-slate-100 transition">Прозвішчы</button>
+          <!-- Filter Pills & Language Switcher -->
+          <div class="flex items-center justify-between text-xs gap-2 flex-wrap">
+            <div class="flex items-center gap-1">
+              <button data-type="all" class="filter-btn active bg-emerald-800 text-white px-2.5 py-1 rounded-full font-medium transition">Усе</button>
+              <button data-type="settlements" class="filter-btn bg-white border border-slate-300 text-slate-600 px-2.5 py-1 rounded-full hover:bg-slate-100 transition">Паселішчы</button>
+              <button data-type="surnames" class="filter-btn bg-white border border-slate-300 text-slate-600 px-2.5 py-1 rounded-full hover:bg-slate-100 transition">Прозвішчы</button>
+            </div>
+
+            <!-- Language Filter (Бел+Рус / Бел / Рус) -->
+            <div class="inline-flex items-center bg-slate-200/80 p-0.5 rounded-lg text-[11px]" title="Абмежаваць мову пошуку назваў паселішчаў">
+              <button type="button" data-lang="all" class="lang-filter-btn bg-white text-emerald-800 font-semibold shadow-sm px-2 py-0.5 rounded-md transition">Бел+Рус</button>
+              <button type="button" data-lang="be" class="lang-filter-btn text-slate-600 hover:text-slate-800 px-2 py-0.5 rounded-md transition">Бел</button>
+              <button type="button" data-lang="ru" class="lang-filter-btn text-slate-600 hover:text-slate-800 px-2 py-0.5 rounded-md transition">Рус</button>
             </div>
           </div>
 
-          <!-- All Fields Toggle Requested by User -->
-          <div class="pt-2 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
-            <label class="flex items-center gap-2 cursor-pointer select-none">
+          <!-- All Fields Toggle & Region Filters Toggle -->
+          <div class="pt-2 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600 gap-2">
+            <label class="flex items-center gap-1.5 cursor-pointer select-none">
               <input type="checkbox" id="chkAllFields" class="rounded text-emerald-700 focus:ring-emerald-500 w-3.5 h-3.5">
-              <span class="text-[11px] font-medium text-slate-700">Шукаць па ўсіх параметрах <span class="text-slate-400 font-normal">(раён, воласць, маёнтак, прыход)</span></span>
+              <span class="text-[11px] font-medium text-slate-700" title="Шукаць таксама ў назвах раёна, воласці, маёнтка і прыхода">Усе палі <span class="text-slate-400 font-normal">(маёнтак, прыход...)</span></span>
             </label>
+
+            <button type="button" id="btnToggleRegionFilters" class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium bg-white border border-slate-300 text-slate-700 hover:bg-slate-100 transition">
+              <i class="ph ph-map-pin-Area text-emerald-700"></i>
+              <span>Рэгіёны</span>
+              <span id="badgeActiveRegions" class="hidden bg-emerald-700 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">0</span>
+              <i id="iconRegionCaret" class="ph ph-caret-down text-[10px] text-slate-400"></i>
+            </button>
+          </div>
+
+          <!-- Collapsible Modern & Historical Region Filters Panel -->
+          <div id="regionFiltersPanel" class="hidden pt-2.5 border-t border-slate-200 space-y-2.5 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Сучасны падзел</span>
+              <button type="button" id="btnResetRegionFilters" class="text-[10px] text-emerald-700 hover:text-emerald-900 font-semibold hidden">Скінуць фільтры</button>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <div>
+                <label class="block text-[10px] text-slate-500 mb-0.5">Вобласць</label>
+                <select id="selFilterRegion" class="w-full py-1 px-2 bg-white border border-slate-300 rounded text-[11px] text-slate-700 focus:ring-1 focus:ring-emerald-600 outline-none">
+                  <option value="">Усе вобласці</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-500 mb-0.5">Сучасны раён</label>
+                <select id="selFilterDistrict" class="w-full py-1 px-2 bg-white border border-slate-300 rounded text-[11px] text-slate-700 focus:ring-1 focus:ring-emerald-600 outline-none">
+                  <option value="">Усе раёны (118)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="pt-1">
+              <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Гістарычны падзел (XVIII–XIX ст.)</span>
+              <div class="grid grid-cols-3 gap-1.5">
+                <div>
+                  <label class="block text-[10px] text-slate-500 mb-0.5" title="Павет Вялікага Княства Літоўскага (XVIII ст.)">Павет ВКЛ</label>
+                  <select id="selFilterPowiat18" class="w-full py-1 px-1.5 bg-white border border-slate-300 rounded text-[11px] text-slate-700 focus:ring-1 focus:ring-emerald-600 outline-none">
+                    <option value="">Усе (XVIII ст.)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-500 mb-0.5" title="Губерня Расійскай імперыі (XIX ст.)">Губерня XIX</label>
+                  <select id="selFilterGubernia" class="w-full py-1 px-1.5 bg-white border border-slate-300 rounded text-[11px] text-slate-700 focus:ring-1 focus:ring-emerald-600 outline-none">
+                    <option value="">Усе губерні</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[10px] text-slate-500 mb-0.5" title="Павет (уезд) Расійскай імперыі (XIX ст.)">Павет XIX ст.</label>
+                  <select id="selFilterUezd" class="w-full py-1 px-1.5 bg-white border border-slate-300 rounded text-[11px] text-slate-700 focus:ring-1 focus:ring-emerald-600 outline-none">
+                    <option value="">Усе паветы</option>
+                  </select>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1500,6 +1560,162 @@
       chkAutoViewportSettlements.addEventListener('change', loadViewportSettlements);
     }
 
+    let currentLang = 'all';
+    let searchAbortController = null;
+    let searchRequestSeq = 0;
+    let regionsMetaCache = null;
+
+    const btnToggleRegionFilters = document.getElementById('btnToggleRegionFilters');
+    const regionFiltersPanel = document.getElementById('regionFiltersPanel');
+    const badgeActiveRegions = document.getElementById('badgeActiveRegions');
+    const btnResetRegionFilters = document.getElementById('btnResetRegionFilters');
+    const selFilterRegion = document.getElementById('selFilterRegion');
+    const selFilterDistrict = document.getElementById('selFilterDistrict');
+    const selFilterPowiat18 = document.getElementById('selFilterPowiat18');
+    const selFilterGubernia = document.getElementById('selFilterGubernia');
+    const selFilterUezd = document.getElementById('selFilterUezd');
+
+    function hasActiveRegionFilters() {
+      return !!(
+        selFilterRegion?.value ||
+        selFilterDistrict?.value ||
+        selFilterPowiat18?.value ||
+        selFilterGubernia?.value ||
+        selFilterUezd?.value
+      );
+    }
+
+    function updateRegionFilterBadges() {
+      const count = [
+        selFilterRegion?.value,
+        selFilterDistrict?.value,
+        selFilterPowiat18?.value,
+        selFilterGubernia?.value,
+        selFilterUezd?.value
+      ].filter(Boolean).length;
+
+      if (badgeActiveRegions) {
+        badgeActiveRegions.innerText = String(count);
+        badgeActiveRegions.classList.toggle('hidden', count === 0);
+      }
+      if (btnResetRegionFilters) {
+        btnResetRegionFilters.classList.toggle('hidden', count === 0);
+      }
+    }
+
+    function populateDistrictOptions(selectedRegion = '') {
+      if (!regionsMetaCache || !selFilterDistrict) return;
+      const prevVal = selFilterDistrict.value;
+      const list = selectedRegion
+        ? regionsMetaCache.districts.filter(d => d.region === selectedRegion)
+        : regionsMetaCache.districts;
+      selFilterDistrict.innerHTML = `<option value="">Усе раёны (${list.length})</option>` +
+        list.map(d => `<option value="${d.name}">${d.name} (${d.count})</option>`).join('');
+      if (list.some(d => d.name === prevVal)) {
+        selFilterDistrict.value = prevVal;
+      } else {
+        selFilterDistrict.value = '';
+      }
+    }
+
+    function populateUezdOptions(selectedGubernia = '') {
+      if (!regionsMetaCache || !selFilterUezd) return;
+      const prevVal = selFilterUezd.value;
+      const list = selectedGubernia
+        ? regionsMetaCache.uezds.filter(u => u.gubernia === selectedGubernia)
+        : regionsMetaCache.uezds;
+      selFilterUezd.innerHTML = `<option value="">Усе паветы (${list.length})</option>` +
+        list.map(u => `<option value="${u.name}">${u.name} (${u.count})</option>`).join('');
+      if (list.some(u => u.name === prevVal)) {
+        selFilterUezd.value = prevVal;
+      } else {
+        selFilterUezd.value = '';
+      }
+    }
+
+    async function loadRegionsMetadata() {
+      try {
+        const res = await fetch('/api/regions');
+        if (!res.ok) return;
+        regionsMetaCache = await res.json();
+        if (selFilterRegion) {
+          selFilterRegion.innerHTML = `<option value="">Усе вобласці</option>` +
+            regionsMetaCache.regions.map(r => `<option value="${r.name}">${r.name} (${r.count})</option>`).join('');
+        }
+        populateDistrictOptions('');
+        if (selFilterPowiat18) {
+          selFilterPowiat18.innerHTML = `<option value="">Усе (XVIII ст.)</option>` +
+            regionsMetaCache.powiats_18.map(p => `<option value="${p.name}">${p.name} (${p.count})</option>`).join('');
+        }
+        if (selFilterGubernia) {
+          selFilterGubernia.innerHTML = `<option value="">Усе губерні</option>` +
+            regionsMetaCache.gubernias.map(g => `<option value="${g.name}">${g.name} (${g.count})</option>`).join('');
+        }
+        populateUezdOptions('');
+      } catch (e) {
+        console.error('Failed to load regions metadata:', e);
+      }
+    }
+    loadRegionsMetadata();
+
+    if (btnToggleRegionFilters && regionFiltersPanel) {
+      btnToggleRegionFilters.addEventListener('click', () => {
+        regionFiltersPanel.classList.toggle('hidden');
+      });
+    }
+
+    if (btnResetRegionFilters) {
+      btnResetRegionFilters.addEventListener('click', () => {
+        if (selFilterRegion) selFilterRegion.value = '';
+        populateDistrictOptions('');
+        if (selFilterPowiat18) selFilterPowiat18.value = '';
+        if (selFilterGubernia) selFilterGubernia.value = '';
+        populateUezdOptions('');
+        updateRegionFilterBadges();
+        const val = searchInput.value.trim();
+        if (val) performSearch(val);
+        else { showWelcome(); clearMap(); }
+      });
+    }
+
+    if (selFilterRegion) {
+      selFilterRegion.addEventListener('change', () => {
+        populateDistrictOptions(selFilterRegion.value);
+        updateRegionFilterBadges();
+        performSearch(searchInput.value.trim());
+      });
+    }
+    if (selFilterGubernia) {
+      selFilterGubernia.addEventListener('change', () => {
+        populateUezdOptions(selFilterGubernia.value);
+        updateRegionFilterBadges();
+        performSearch(searchInput.value.trim());
+      });
+    }
+    [selFilterDistrict, selFilterPowiat18, selFilterUezd].forEach(sel => {
+      if (!sel) return;
+      sel.addEventListener('change', () => {
+        updateRegionFilterBadges();
+        performSearch(searchInput.value.trim());
+      });
+    });
+
+    // Language Buttons (Бел+Рус / Бел / Рус)
+    document.querySelectorAll('.lang-filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.lang-filter-btn').forEach(b => {
+          b.classList.remove('bg-white', 'text-emerald-800', 'font-semibold', 'shadow-sm');
+          b.classList.add('text-slate-600');
+        });
+        btn.classList.add('bg-white', 'text-emerald-800', 'font-semibold', 'shadow-sm');
+        btn.classList.remove('text-slate-600');
+        currentLang = btn.dataset.lang || 'all';
+        if (searchInput.value.trim() || hasActiveRegionFilters()) {
+          performSearch(searchInput.value.trim());
+        }
+      });
+    });
+
     // Filter Buttons (Усе / Паселішчы / Прозвішчы)
     document.querySelectorAll('.filter-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1510,13 +1726,13 @@
         btn.classList.add('bg-emerald-800', 'text-white');
         btn.classList.remove('bg-white', 'text-slate-600', 'border');
         currentFilter = btn.dataset.type;
-        performSearch(searchInput.value);
+        performSearch(searchInput.value.trim());
       });
     });
 
     // Checkbox All Fields change
     chkAllFields.addEventListener('change', () => {
-      if (searchInput.value.trim()) {
+      if (searchInput.value.trim() || hasActiveRegionFilters()) {
         performSearch(searchInput.value.trim());
       }
     });
@@ -1527,7 +1743,9 @@
       const val = e.target.value.trim();
       clearSearch.classList.toggle('hidden', !val);
 
-      if (!val) {
+      if (!val && !hasActiveRegionFilters()) {
+        if (searchAbortController) searchAbortController.abort();
+        searchRequestSeq++;
         showWelcome();
         clearMap();
         return;
@@ -1542,17 +1760,23 @@
       if (e.key === 'Enter') {
         clearTimeout(searchDebounce);
         const val = searchInput.value.trim();
-        if (val) {
+        if (val || hasActiveRegionFilters()) {
           performSearch(val);
         }
       }
     });
 
     clearSearch.addEventListener('click', () => {
+      if (searchAbortController) searchAbortController.abort();
+      searchRequestSeq++;
       searchInput.value = '';
       clearSearch.classList.add('hidden');
-      showWelcome();
-      clearMap();
+      if (hasActiveRegionFilters()) {
+        performSearch('');
+      } else {
+        showWelcome();
+        clearMap();
+      }
       window.location.hash = '';
     });
 
@@ -1579,7 +1803,18 @@
 
     // Main Search Action
     async function performSearch(query) {
-      if (!query) return;
+      const cleanQ = (query || '').trim();
+      if (!cleanQ && !hasActiveRegionFilters()) {
+        showWelcome();
+        clearMap();
+        return;
+      }
+      if (searchAbortController) {
+        searchAbortController.abort();
+      }
+      searchAbortController = new AbortController();
+      const mySeq = ++searchRequestSeq;
+
       const searchLoading = document.getElementById('searchLoading');
       const searchEmptyState = document.getElementById('searchEmptyState');
       const settlementsSection = document.getElementById('settlementsSection');
@@ -1593,16 +1828,36 @@
 
       try {
         const allFieldsParam = chkAllFields.checked ? 'true' : 'false';
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&type=${currentFilter}&all_fields=${allFieldsParam}&limit=500`);
+        const params = new URLSearchParams({
+          q: cleanQ,
+          type: currentFilter,
+          lang: currentLang,
+          all_fields: allFieldsParam,
+          limit: '500'
+        });
+        if (selFilterRegion?.value) params.set('region', selFilterRegion.value);
+        if (selFilterDistrict?.value) params.set('district', selFilterDistrict.value);
+        if (selFilterPowiat18?.value) params.set('powiat_18', selFilterPowiat18.value);
+        if (selFilterGubernia?.value) params.set('gubernia', selFilterGubernia.value);
+        if (selFilterUezd?.value) params.set('uezd', selFilterUezd.value);
+
+        const res = await fetch(`/api/search?${params.toString()}`, {
+          signal: searchAbortController.signal
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        if (mySeq !== searchRequestSeq) return; // Ignore stale response
         renderResults(data, `Населеныя пункты (${data.settlements ? data.settlements.length : 0})`);
       } catch (err) {
+        if (err.name === 'AbortError') return;
+        if (mySeq !== searchRequestSeq) return;
         console.error("Search error:", err);
         if (searchEmptyState) searchEmptyState.classList.add('hidden');
         showToast("Не ўдалося атрымаць вынікі. Праверце сервер.");
       } finally {
-        if (searchLoading) searchLoading.classList.add('hidden');
+        if (mySeq === searchRequestSeq && searchLoading) {
+          searchLoading.classList.add('hidden');
+        }
       }
     }
 

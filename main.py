@@ -22,7 +22,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from db import get_db_connection, slugify, py_lower, py_norm, py_fuzzy_norm
+from db import get_db_connection, slugify, py_lower, py_norm, py_clean_name, py_fuzzy_norm
 
 app = FastAPI(
     title="Дапаможнік+ (Гістарычныя паселішчы і прозвішчы Беларусі)",
@@ -177,6 +177,55 @@ def classify_density(pct: float) -> dict:
     else:
         return {"level": "rare", "label": "Рэдкая (<3%)", "color": "#64748b", "bg": "#f8fafc"}
 
+_REGIONS_META = None
+
+@app.get("/api/regions")
+def get_regions_meta():
+    global _REGIONS_META
+    if _REGIONS_META is not None:
+        return _REGIONS_META
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT region, COUNT(*) FROM settlements WHERE region IS NOT NULL AND region != '' GROUP BY region ORDER BY region")
+    regions = [{"name": r[0], "count": r[1]} for r in cur.fetchall()]
+
+    cur.execute("SELECT district, region, COUNT(*) FROM settlements WHERE district IS NOT NULL AND district != '' GROUP BY district ORDER BY district")
+    districts = []
+    district_to_region = {}
+    for d, reg, cnt in cur.fetchall():
+        if d in ("Заблудаўскі р-н Беластоцкай вобл.", "Ратнаўскі"):
+            continue
+        districts.append({"name": d, "region": reg or "", "count": cnt})
+        if reg:
+            district_to_region[d] = reg
+
+    cur.execute("SELECT powiat_18, COUNT(*) FROM settlements WHERE powiat_18 IS NOT NULL AND powiat_18 != '' GROUP BY powiat_18 ORDER BY COUNT(*) DESC, powiat_18 ASC")
+    powiats_18 = [{"name": r[0], "count": r[1]} for r in cur.fetchall()]
+
+    cur.execute("SELECT gubernia, COUNT(*) FROM settlements WHERE gubernia IS NOT NULL AND gubernia != '' GROUP BY gubernia ORDER BY COUNT(*) DESC, gubernia ASC")
+    gubernias = [{"name": r[0], "count": r[1]} for r in cur.fetchall()]
+
+    cur.execute("SELECT uezd, gubernia, COUNT(*) FROM settlements WHERE uezd IS NOT NULL AND uezd != '' GROUP BY uezd ORDER BY uezd ASC")
+    uezds = []
+    uezd_to_gubernia = {}
+    for u, gub, cnt in cur.fetchall():
+        uezds.append({"name": u, "gubernia": gub or "", "count": cnt})
+        if gub:
+            uezd_to_gubernia[u] = gub
+
+    conn.close()
+    _REGIONS_META = {
+        "regions": regions,
+        "districts": districts,
+        "district_to_region": district_to_region,
+        "powiats_18": powiats_18,
+        "gubernias": gubernias,
+        "uezds": uezds,
+        "uezd_to_gubernia": uezd_to_gubernia,
+    }
+    return _REGIONS_META
+
 def build_wildcard_pattern(raw: str) -> str:
     s = raw.strip()
     if not s:
@@ -192,16 +241,51 @@ def build_wildcard_pattern(raw: str) -> str:
 
 @app.get("/api/search")
 def search(
-    q: str = Query(..., min_length=1, description="Пошукавы запыт"),
+    q: str = Query("", description="Пошукавы запыт"),
     type: str = Query("all", pattern="^(all|settlements|surnames)$"),
+    lang: str = Query("all", pattern="^(all|be|ru)$", description="Мова пошуку: all, be, ru"),
     all_fields: bool = Query(False, description="Шукаць па ўсіх палях (раён, воласць, маёнтак, прыход)"),
+    region: Optional[str] = Query(None, description="Сучасная вобласць"),
+    district: Optional[str] = Query(None, description="Сучасны раён"),
+    powiat_18: Optional[str] = Query(None, description="Павет ВКЛ XVIII ст."),
+    gubernia: Optional[str] = Query(None, description="Губерня XIX ст."),
+    uezd: Optional[str] = Query(None, description="Павет (уезд) XIX ст."),
     limit: Optional[int] = Query(500, description="Ліміт вынікаў")
 ):
     conn = get_db_connection()
     cur = conn.cursor()
-    query_clean = q.strip()
+    query_clean = (q or "").strip()
     norm_q = py_norm(query_clean)
     fuzzy_q = py_fuzzy_norm(query_clean)
+
+    # Build region filter clauses for settlements table (alias or direct)
+    def build_region_filters(prefix: str = ""):
+        p = f"{prefix}." if prefix else ""
+        r_conds = []
+        r_params = []
+        if region:
+            r_conds.append(f"{p}region = ?")
+            r_params.append(region)
+        if district:
+            r_conds.append(f"{p}district = ?")
+            r_params.append(district)
+        if powiat_18:
+            r_conds.append(f"{p}powiat_18 = ?")
+            r_params.append(powiat_18)
+        if gubernia:
+            r_conds.append(f"{p}gubernia = ?")
+            r_params.append(gubernia)
+        if uezd:
+            r_conds.append(f"{p}uezd = ?")
+            r_params.append(uezd)
+        return r_conds, r_params
+
+    st_reg_conds, st_reg_params = build_region_filters()
+    has_reg_filters = len(st_reg_conds) > 0
+
+    if not query_clean and not has_reg_filters:
+        conn.close()
+        return {"settlements": [], "surnames": []}
 
     stop_words = {'в', 'в.', 'вёска', 'веска', 'дер', 'дер.', 'деревня', 'д.', 'што', 'каля', 'пад', 'ля', 'урочышча', 'пасёлак', 'хутар', 'засценак'}
     raw_tokens = [w for w in re.split(r'[\s\-,]+', query_clean) if len(w) > 1 and py_norm(w) not in stop_words]
@@ -210,142 +294,220 @@ def search(
     results = {"settlements": [], "surnames": []}
 
     if type in ("all", "settlements"):
-        has_wc = any(c in query_clean for c in ("*", "?"))
-        if has_wc:
-            w_pat = build_wildcard_pattern(norm_q)
-            w_fuzzy = build_wildcard_pattern(fuzzy_q)
-            w_word_pat = f"% {w_pat}" if not w_pat.startswith("%") else w_pat
-            w_word_fuzzy = f"% {w_fuzzy}" if not w_fuzzy.startswith("%") else w_fuzzy
-            if not all_fields:
-                cur.execute("""
-                    SELECT id, slug, name_be, name_ru, settlement_type, district, selsoviet,
-                           powiat_18, estate_18, owner_18, estate_19, owner_19, belonging,
-                           uezd, volost, parish_orthodox, parish_catholic, lat, lon,
-                           CASE 
-                               WHEN py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ? THEN 1
-                               WHEN py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ? THEN 2
-                               ELSE 3
-                           END as rank_score
-                    FROM settlements
-                    WHERE py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ?
-                       OR py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ?
-                       OR py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ?
-                       OR py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ?
-                    ORDER BY rank_score ASC, (settlement_type = 'Город') DESC, name_be ASC
-                    LIMIT ?
-                """, (w_pat, w_pat, w_fuzzy, w_fuzzy,
-                      w_pat, w_pat, w_fuzzy, w_fuzzy,
-                      w_word_pat, w_word_pat, w_word_fuzzy, w_word_fuzzy, limit))
+        reg_sql = (" AND " + " AND ".join(st_reg_conds)) if st_reg_conds else ""
+
+        if not query_clean:
+            # Region-only browse
+            cur.execute(f"""
+                SELECT id, slug, name_be, name_ru, settlement_type, district, selsoviet,
+                       powiat_18, estate_18, owner_18, estate_19, owner_19, belonging,
+                       uezd, volost, parish_orthodox, parish_catholic, lat, lon,
+                       1 as rank_score
+                FROM settlements
+                WHERE 1=1 {reg_sql}
+                ORDER BY (settlement_type = 'Город') DESC, name_be ASC
+                LIMIT ?
+            """, (*st_reg_params, limit))
+            results["settlements"] = [dict(row) for row in cur.fetchall()]
+        else:
+            has_wc = any(c in query_clean for c in ("*", "?"))
+            if has_wc:
+                # Strict wildcard pattern without phonetic о->а replacement
+                w_strict = query_clean.replace("*", "%").replace("?", "_").lower()
+                w_pat = build_wildcard_pattern(query_clean)
+                if lang == "be":
+                    name_match_sql = "py_clean_name(name_be) LIKE ?"
+                    name_match_params = [w_pat]
+                    rank_sql = "CASE WHEN py_clean_name(name_be) LIKE ? THEN 1 ELSE 2 END"
+                    rank_params = [w_strict]
+                elif lang == "ru":
+                    name_match_sql = "py_clean_name(name_ru) LIKE ?"
+                    name_match_params = [w_pat]
+                    rank_sql = "CASE WHEN py_clean_name(name_ru) LIKE ? THEN 1 ELSE 2 END"
+                    rank_params = [w_strict]
+                else:
+                    name_match_sql = "(py_clean_name(name_be) LIKE ? OR py_clean_name(name_ru) LIKE ?)"
+                    name_match_params = [w_pat, w_pat]
+                    rank_sql = "CASE WHEN py_clean_name(name_be) LIKE ? OR py_clean_name(name_ru) LIKE ? THEN 1 ELSE 2 END"
+                    rank_params = [w_strict, w_strict]
+
+                if not all_fields:
+                    cur.execute(f"""
+                        SELECT id, slug, name_be, name_ru, settlement_type, district, selsoviet,
+                               powiat_18, estate_18, owner_18, estate_19, owner_19, belonging,
+                               uezd, volost, parish_orthodox, parish_catholic, lat, lon,
+                               {rank_sql} as rank_score
+                        FROM settlements
+                        WHERE ({name_match_sql}) {reg_sql}
+                        ORDER BY rank_score ASC, (settlement_type = 'Город') DESC, name_be ASC
+                        LIMIT ?
+                    """, (*rank_params, *name_match_params, *st_reg_params, limit))
+                else:
+                    cur.execute(f"""
+                        SELECT id, slug, name_be, name_ru, settlement_type, district, selsoviet,
+                               powiat_18, estate_18, owner_18, estate_19, owner_19, belonging,
+                               uezd, volost, parish_orthodox, parish_catholic, lat, lon,
+                               {rank_sql} as rank_score
+                        FROM settlements
+                        WHERE ({name_match_sql}
+                           OR py_lower(district) LIKE ? OR py_lower(volost) LIKE ? OR py_lower(uezd) LIKE ?
+                           OR py_lower(estate_18) LIKE ? OR py_lower(estate_19) LIKE ?
+                           OR py_lower(parish_orthodox) LIKE ? OR py_lower(parish_catholic) LIKE ?)
+                           {reg_sql}
+                        ORDER BY rank_score ASC, (settlement_type = 'Город') DESC, name_be ASC
+                        LIMIT ?
+                    """, (*rank_params, *name_match_params,
+                          w_pat, w_pat, w_pat, w_pat, w_pat, w_pat, w_pat,
+                          *st_reg_params, limit))
+            elif not all_fields:
+                if len(tokens) > 1:
+                    conds = []
+                    params = []
+                    for tok in tokens:
+                        ftok = py_fuzzy_norm(tok)
+                        if lang == "be":
+                            conds.append("(py_norm(name_be) LIKE ? OR py_fuzzy_norm(name_be) LIKE ?)")
+                            params.extend([f"%{tok}%", f"%{ftok}%"])
+                        elif lang == "ru":
+                            conds.append("(py_norm(name_ru) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ?)")
+                            params.extend([f"%{tok}%", f"%{ftok}%"])
+                        else:
+                            conds.append("(py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ? OR py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ?)")
+                            params.extend([f"%{tok}%", f"%{tok}%", f"%{ftok}%", f"%{ftok}%"])
+                    
+                    where_clause = " AND ".join(conds)
+                    cur.execute(f"""
+                        SELECT id, slug, name_be, name_ru, settlement_type, district, selsoviet,
+                               powiat_18, estate_18, owner_18, estate_19, owner_19, belonging,
+                               uezd, volost, parish_orthodox, parish_catholic, lat, lon,
+                               CASE 
+                                   WHEN py_clean_name(name_be) = ? OR py_clean_name(name_ru) = ? THEN 1
+                                   WHEN py_fuzzy_norm(name_be) = ? OR py_fuzzy_norm(name_ru) = ? THEN 2
+                                   ELSE 3
+                               END as rank_score
+                        FROM settlements
+                        WHERE ({where_clause}) {reg_sql}
+                        ORDER BY rank_score ASC, (settlement_type = 'Город') DESC, name_be ASC
+                        LIMIT ?
+                    """, (norm_q, norm_q, fuzzy_q, fuzzy_q, *params, *st_reg_params, limit))
+                else:
+                    if lang == "be":
+                        cur.execute(f"""
+                            SELECT id, slug, name_be, name_ru, settlement_type, district, selsoviet,
+                                   powiat_18, estate_18, owner_18, estate_19, owner_19, belonging,
+                                   uezd, volost, parish_orthodox, parish_catholic, lat, lon,
+                                   CASE 
+                                       WHEN py_clean_name(name_be) = ? THEN 1
+                                       WHEN py_clean_name(name_be) LIKE ? THEN 2
+                                       WHEN py_fuzzy_norm(name_be) = ? THEN 3
+                                       WHEN py_fuzzy_norm(name_be) LIKE ? THEN 4
+                                       ELSE 5
+                                   END as rank_score
+                            FROM settlements
+                            WHERE (py_norm(name_be) LIKE ? OR py_fuzzy_norm(name_be) LIKE ?) {reg_sql}
+                            ORDER BY rank_score ASC, (settlement_type = 'Город') DESC, name_be ASC
+                            LIMIT ?
+                        """, (norm_q, f"{norm_q}%", fuzzy_q, f"{fuzzy_q}%",
+                              f"%{norm_q}%", f"%{fuzzy_q}%", *st_reg_params, limit))
+                    elif lang == "ru":
+                        cur.execute(f"""
+                            SELECT id, slug, name_be, name_ru, settlement_type, district, selsoviet,
+                                   powiat_18, estate_18, owner_18, estate_19, owner_19, belonging,
+                                   uezd, volost, parish_orthodox, parish_catholic, lat, lon,
+                                   CASE 
+                                       WHEN py_clean_name(name_ru) = ? THEN 1
+                                       WHEN py_clean_name(name_ru) LIKE ? THEN 2
+                                       WHEN py_fuzzy_norm(name_ru) = ? THEN 3
+                                       WHEN py_fuzzy_norm(name_ru) LIKE ? THEN 4
+                                       ELSE 5
+                                   END as rank_score
+                            FROM settlements
+                            WHERE (py_norm(name_ru) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ?) {reg_sql}
+                            ORDER BY rank_score ASC, (settlement_type = 'Город') DESC, name_be ASC
+                            LIMIT ?
+                        """, (norm_q, f"{norm_q}%", fuzzy_q, f"{fuzzy_q}%",
+                              f"%{norm_q}%", f"%{fuzzy_q}%", *st_reg_params, limit))
+                    else:
+                        cur.execute(f"""
+                            SELECT id, slug, name_be, name_ru, settlement_type, district, selsoviet,
+                                   powiat_18, estate_18, owner_18, estate_19, owner_19, belonging,
+                                   uezd, volost, parish_orthodox, parish_catholic, lat, lon,
+                                   CASE 
+                                       WHEN py_clean_name(name_be) = ? OR py_clean_name(name_ru) = ? THEN 1
+                                       WHEN py_clean_name(name_be) LIKE ? OR py_clean_name(name_ru) LIKE ? THEN 2
+                                       WHEN py_fuzzy_norm(name_be) = ? OR py_fuzzy_norm(name_ru) = ? THEN 3
+                                       WHEN py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ? THEN 4
+                                       ELSE 5
+                                   END as rank_score
+                            FROM settlements
+                            WHERE (py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ?
+                               OR py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ?) {reg_sql}
+                            ORDER BY rank_score ASC, (settlement_type = 'Город') DESC, name_be ASC
+                            LIMIT ?
+                        """, (norm_q, norm_q, f"{norm_q}%", f"{norm_q}%", fuzzy_q, fuzzy_q, f"{fuzzy_q}%", f"{fuzzy_q}%",
+                              f"%{norm_q}%", f"%{norm_q}%", f"%{fuzzy_q}%", f"%{fuzzy_q}%", *st_reg_params, limit))
             else:
-                cur.execute("""
-                    SELECT id, slug, name_be, name_ru, settlement_type, district, selsoviet,
-                           powiat_18, estate_18, owner_18, estate_19, owner_19, belonging,
-                           uezd, volost, parish_orthodox, parish_catholic, lat, lon,
-                           CASE 
-                               WHEN py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ? THEN 1
-                               WHEN py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ? THEN 2
-                               ELSE 3
-                           END as rank_score
-                    FROM settlements
-                    WHERE py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ? OR py_norm(district) LIKE ?
-                       OR py_norm(volost) LIKE ? OR py_norm(uezd) LIKE ? OR py_norm(estate_18) LIKE ? OR py_norm(estate_19) LIKE ?
-                       OR py_norm(parish_orthodox) LIKE ? OR py_norm(parish_catholic) LIKE ?
-                       OR py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ?
-                       OR py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ?
-                    ORDER BY rank_score ASC, (settlement_type = 'Город') DESC, name_be ASC
-                    LIMIT ?
-                """, (w_pat, w_pat, w_fuzzy, w_fuzzy,
-                      w_pat, w_pat, w_pat,
-                      w_pat, w_pat, w_pat, w_pat,
-                      w_pat, w_pat, w_fuzzy, w_fuzzy,
-                      w_word_pat, w_word_pat, limit))
-        elif not all_fields:
-            if len(tokens) > 1:
-                # Multi-token matching (handles reversed word order, spaces instead of hyphens, compound names)
-                conds = []
-                params = []
-                for tok in tokens:
-                    ftok = py_fuzzy_norm(tok)
-                    conds.append("(py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ? OR py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ?)")
-                    params.extend([f"%{tok}%", f"%{tok}%", f"%{ftok}%", f"%{ftok}%"])
-                
-                where_clause = " AND ".join(conds)
+                # All fields search: Search name, district, volost, uezd, estate, parish
                 cur.execute(f"""
                     SELECT id, slug, name_be, name_ru, settlement_type, district, selsoviet,
                            powiat_18, estate_18, owner_18, estate_19, owner_19, belonging,
                            uezd, volost, parish_orthodox, parish_catholic, lat, lon,
                            CASE 
-                               WHEN py_norm(name_be) = ? OR py_norm(name_ru) = ? THEN 1
-                               WHEN py_fuzzy_norm(name_be) = ? OR py_fuzzy_norm(name_ru) = ? THEN 2
+                               WHEN py_clean_name(name_be) = ? OR py_clean_name(name_ru) = ? THEN 1
+                               WHEN py_clean_name(name_be) LIKE ? OR py_clean_name(name_ru) LIKE ? THEN 2
                                ELSE 3
                            END as rank_score
                     FROM settlements
-                    WHERE {where_clause}
+                    WHERE (py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ? OR py_norm(district) LIKE ?
+                       OR py_norm(volost) LIKE ? OR py_norm(uezd) LIKE ? OR py_norm(estate_18) LIKE ? OR py_norm(estate_19) LIKE ?
+                       OR py_norm(parish_orthodox) LIKE ? OR py_norm(parish_catholic) LIKE ?
+                       OR py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ?) {reg_sql}
                     ORDER BY rank_score ASC, (settlement_type = 'Город') DESC, name_be ASC
                     LIMIT ?
-                """, (norm_q, norm_q, fuzzy_q, fuzzy_q, *params, limit))
-            else:
-                # Single word search with exact, prefix, substring, and phonetic fuzzy fallback
-                cur.execute("""
-                    SELECT id, slug, name_be, name_ru, settlement_type, district, selsoviet,
-                           powiat_18, estate_18, owner_18, estate_19, owner_19, belonging,
-                           uezd, volost, parish_orthodox, parish_catholic, lat, lon,
-                           CASE 
-                               WHEN py_norm(name_be) = ? OR py_norm(name_ru) = ? THEN 1
-                               WHEN py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ? THEN 2
-                               WHEN py_fuzzy_norm(name_be) = ? OR py_fuzzy_norm(name_ru) = ? THEN 3
-                               WHEN py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ? THEN 4
-                               ELSE 5
-                           END as rank_score
-                    FROM settlements
-                    WHERE py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ?
-                       OR py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ?
-                    ORDER BY rank_score ASC, (settlement_type = 'Город') DESC, name_be ASC
-                    LIMIT ?
-                """, (norm_q, norm_q, f"{norm_q}%", f"{norm_q}%", fuzzy_q, fuzzy_q, f"{fuzzy_q}%", f"{fuzzy_q}%",
-                      f"%{norm_q}%", f"%{norm_q}%", f"%{fuzzy_q}%", f"%{fuzzy_q}%", limit))
-        else:
-            # All fields search: Search name, district, volost, uezd, estate, parish
-            cur.execute("""
-                SELECT id, slug, name_be, name_ru, settlement_type, district, selsoviet,
-                       powiat_18, estate_18, owner_18, estate_19, owner_19, belonging,
-                       uezd, volost, parish_orthodox, parish_catholic, lat, lon,
-                       CASE 
-                           WHEN py_norm(name_be) = ? OR py_norm(name_ru) = ? THEN 1
-                           WHEN py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ? THEN 2
-                           ELSE 3
-                       END as rank_score
-                FROM settlements
-                WHERE py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ? OR py_norm(district) LIKE ?
-                   OR py_norm(volost) LIKE ? OR py_norm(uezd) LIKE ? OR py_norm(estate_18) LIKE ? OR py_norm(estate_19) LIKE ?
-                   OR py_norm(parish_orthodox) LIKE ? OR py_norm(parish_catholic) LIKE ?
-                   OR py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ?
-                ORDER BY rank_score ASC, (settlement_type = 'Город') DESC, name_be ASC
-                LIMIT ?
-            """, (norm_q, norm_q, f"{norm_q}%", f"{norm_q}%",
-                  f"%{norm_q}%", f"%{norm_q}%", f"%{norm_q}%",
-                  f"%{norm_q}%", f"%{norm_q}%", f"%{norm_q}%", f"%{norm_q}%",
-                  f"%{norm_q}%", f"%{norm_q}%", f"%{fuzzy_q}%", f"%{fuzzy_q}%", limit))
+                """, (norm_q, norm_q, f"{norm_q}%", f"{norm_q}%",
+                      f"%{norm_q}%", f"%{norm_q}%", f"%{norm_q}%",
+                      f"%{norm_q}%", f"%{norm_q}%", f"%{norm_q}%", f"%{norm_q}%",
+                      f"%{norm_q}%", f"%{norm_q}%", f"%{fuzzy_q}%", f"%{fuzzy_q}%",
+                      *st_reg_params, limit))
 
-        results["settlements"] = [dict(row) for row in cur.fetchall()]
+            results["settlements"] = [dict(row) for row in cur.fetchall()]
 
     if type in ("all", "surnames"):
-        if any(c in query_clean for c in ("*", "?")):
-            w_pat = build_wildcard_pattern(norm_q)
-            w_fuzzy = build_wildcard_pattern(fuzzy_q)
-            cur.execute("""
-                SELECT s.id, s.slug, s.surname_be, COUNT(ss.settlement_id) as settlements_count,
+        sn_reg_conds, sn_reg_params = build_region_filters("st")
+        if has_reg_filters:
+            join_sql = "JOIN settlement_surnames ss ON s.id = ss.surname_id JOIN settlements st ON ss.settlement_id = st.id"
+            reg_where_sql = " AND " + " AND ".join(sn_reg_conds)
+        else:
+            join_sql = "LEFT JOIN settlement_surnames ss ON s.id = ss.surname_id"
+            reg_where_sql = ""
+
+        if not query_clean:
+            cur.execute(f"""
+                SELECT s.id, s.slug, s.surname_be, COUNT(DISTINCT ss.settlement_id) as settlements_count,
                        1 as rank_score
                 FROM surnames s
-                LEFT JOIN settlement_surnames ss ON s.id = ss.surname_id
-                WHERE py_norm(s.surname_be) LIKE ? OR py_fuzzy_norm(s.surname_be) LIKE ?
+                {join_sql}
+                WHERE 1=1 {reg_where_sql}
                 GROUP BY s.id
                 ORDER BY settlements_count DESC, s.surname_be ASC
                 LIMIT ?
-            """, (w_pat, w_fuzzy, limit))
+            """, (*sn_reg_params, limit))
+        elif any(c in query_clean for c in ("*", "?")):
+            w_strict = query_clean.replace("*", "%").replace("?", "_").lower()
+            w_pat = build_wildcard_pattern(query_clean)
+            cur.execute(f"""
+                SELECT s.id, s.slug, s.surname_be, COUNT(DISTINCT ss.settlement_id) as settlements_count,
+                       CASE WHEN py_lower(s.surname_be) LIKE ? THEN 1 ELSE 2 END as rank_score
+                FROM surnames s
+                {join_sql}
+                WHERE (py_lower(s.surname_be) LIKE ?) {reg_where_sql}
+                GROUP BY s.id
+                ORDER BY rank_score ASC, settlements_count DESC, s.surname_be ASC
+                LIMIT ?
+            """, (w_strict, w_pat, *sn_reg_params, limit))
         else:
-            cur.execute("""
-                SELECT s.id, s.slug, s.surname_be, COUNT(ss.settlement_id) as settlements_count,
+            cur.execute(f"""
+                SELECT s.id, s.slug, s.surname_be, COUNT(DISTINCT ss.settlement_id) as settlements_count,
                        CASE 
                            WHEN py_norm(s.surname_be) = ? THEN 1
                            WHEN py_norm(s.surname_be) LIKE ? THEN 2
@@ -353,12 +515,12 @@ def search(
                            ELSE 4
                        END as rank_score
                 FROM surnames s
-                LEFT JOIN settlement_surnames ss ON s.id = ss.surname_id
-                WHERE py_norm(s.surname_be) LIKE ? OR py_fuzzy_norm(s.surname_be) LIKE ? OR s.normalized LIKE ?
+                {join_sql}
+                WHERE (py_norm(s.surname_be) LIKE ? OR py_fuzzy_norm(s.surname_be) LIKE ? OR s.normalized LIKE ?) {reg_where_sql}
                 GROUP BY s.id
                 ORDER BY rank_score ASC, settlements_count DESC, s.surname_be ASC
                 LIMIT ?
-            """, (norm_q, f"{norm_q}%", fuzzy_q, f"%{norm_q}%", f"%{fuzzy_q}%", f"%{norm_q}%", limit))
+            """, (norm_q, f"{norm_q}%", fuzzy_q, f"%{norm_q}%", f"%{fuzzy_q}%", f"%{norm_q}%", *sn_reg_params, limit))
         results["surnames"] = [dict(row) for row in cur.fetchall()]
 
     conn.close()

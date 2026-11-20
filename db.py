@@ -27,14 +27,30 @@ def py_norm(s: Optional[str]) -> str:
     if not s:
         return ""
     t = s.lower().strip()
+    if t == "не існуе":
+        return ""
     t = re.sub(r"[\’\ʼ\‘\`\´]", "'", t)
     t = t.replace('ё', 'е')
     return t
+
+def py_clean_name(s: Optional[str]) -> str:
+    if not s:
+        return ""
+    t = s.lower().strip()
+    if t == "не існуе":
+        return ""
+    t = re.sub(r"^да\s+\d{4}(?:-[а-яіїўёa-z]+)?\s+", "", t)
+    t = re.sub(r"\s*\([^)]*\)\s*$", "", t)
+    t = re.sub(r",\s*[а-яіїўё\.]+\s*$", "", t)
+    t = re.sub(r"[\’\ʼ\‘\`\´]", "'", t)
+    return t.strip()
 
 def py_fuzzy_norm(s: Optional[str]) -> str:
     if not s:
         return ""
     t = py_norm(s)
+    if not t:
+        return ""
     t = t.replace('міер', 'мер').replace('миер', 'мер')
     t = t.replace('о', 'а')
     t = t.replace('ы', 'і')
@@ -60,6 +76,7 @@ def get_db_connection(db_path: str = DB_PATH) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.create_function("py_lower", 1, py_lower)
     conn.create_function("py_norm", 1, py_norm)
+    conn.create_function("py_clean_name", 1, py_clean_name)
     conn.create_function("py_fuzzy_norm", 1, py_fuzzy_norm)
     return conn
 
