@@ -210,7 +210,56 @@ def search(
     results = {"settlements": [], "surnames": []}
 
     if type in ("all", "settlements"):
-        if not all_fields:
+        has_wc = any(c in query_clean for c in ("*", "?"))
+        if has_wc:
+            w_pat = build_wildcard_pattern(norm_q)
+            w_fuzzy = build_wildcard_pattern(fuzzy_q)
+            w_word_pat = f"% {w_pat}" if not w_pat.startswith("%") else w_pat
+            w_word_fuzzy = f"% {w_fuzzy}" if not w_fuzzy.startswith("%") else w_fuzzy
+            if not all_fields:
+                cur.execute("""
+                    SELECT id, slug, name_be, name_ru, settlement_type, district, selsoviet,
+                           powiat_18, estate_18, owner_18, estate_19, owner_19, belonging,
+                           uezd, volost, parish_orthodox, parish_catholic, lat, lon,
+                           CASE 
+                               WHEN py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ? THEN 1
+                               WHEN py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ? THEN 2
+                               ELSE 3
+                           END as rank_score
+                    FROM settlements
+                    WHERE py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ?
+                       OR py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ?
+                       OR py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ?
+                       OR py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ?
+                    ORDER BY rank_score ASC, (settlement_type = 'Город') DESC, name_be ASC
+                    LIMIT ?
+                """, (w_pat, w_pat, w_fuzzy, w_fuzzy,
+                      w_pat, w_pat, w_fuzzy, w_fuzzy,
+                      w_word_pat, w_word_pat, w_word_fuzzy, w_word_fuzzy, limit))
+            else:
+                cur.execute("""
+                    SELECT id, slug, name_be, name_ru, settlement_type, district, selsoviet,
+                           powiat_18, estate_18, owner_18, estate_19, owner_19, belonging,
+                           uezd, volost, parish_orthodox, parish_catholic, lat, lon,
+                           CASE 
+                               WHEN py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ? THEN 1
+                               WHEN py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ? THEN 2
+                               ELSE 3
+                           END as rank_score
+                    FROM settlements
+                    WHERE py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ? OR py_norm(district) LIKE ?
+                       OR py_norm(volost) LIKE ? OR py_norm(uezd) LIKE ? OR py_norm(estate_18) LIKE ? OR py_norm(estate_19) LIKE ?
+                       OR py_norm(parish_orthodox) LIKE ? OR py_norm(parish_catholic) LIKE ?
+                       OR py_fuzzy_norm(name_be) LIKE ? OR py_fuzzy_norm(name_ru) LIKE ?
+                       OR py_norm(name_be) LIKE ? OR py_norm(name_ru) LIKE ?
+                    ORDER BY rank_score ASC, (settlement_type = 'Город') DESC, name_be ASC
+                    LIMIT ?
+                """, (w_pat, w_pat, w_fuzzy, w_fuzzy,
+                      w_pat, w_pat, w_pat,
+                      w_pat, w_pat, w_pat, w_pat,
+                      w_pat, w_pat, w_fuzzy, w_fuzzy,
+                      w_word_pat, w_word_pat, limit))
+        elif not all_fields:
             if len(tokens) > 1:
                 # Multi-token matching (handles reversed word order, spaces instead of hyphens, compound names)
                 conds = []
@@ -282,7 +331,8 @@ def search(
 
     if type in ("all", "surnames"):
         if any(c in query_clean for c in ("*", "?")):
-            w_pat = build_wildcard_pattern(query_clean)
+            w_pat = build_wildcard_pattern(norm_q)
+            w_fuzzy = build_wildcard_pattern(fuzzy_q)
             cur.execute("""
                 SELECT s.id, s.slug, s.surname_be, COUNT(ss.settlement_id) as settlements_count,
                        1 as rank_score
@@ -292,7 +342,7 @@ def search(
                 GROUP BY s.id
                 ORDER BY settlements_count DESC, s.surname_be ASC
                 LIMIT ?
-            """, (w_pat, w_pat, limit))
+            """, (w_pat, w_fuzzy, limit))
         else:
             cur.execute("""
                 SELECT s.id, s.slug, s.surname_be, COUNT(ss.settlement_id) as settlements_count,
